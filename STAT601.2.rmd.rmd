@@ -1,0 +1,530 @@
+---
+title: "Data analysis from the HSAUR"
+author: "Yamuna Dhungana"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F,warning=F,echo=F,fig_height=10,fig_width=5,fig.align='center',cache = F)
+```
+
+
+Following answers are from the text book R Handbook.
+
+1. Collett (2003) argues that two outliers need to be removed from the \textbf{plasma} data. Try to identify those two unusual observations by means of a scatterplot. (7.2 on Handbook)
+```{r}
+require(knitr)
+
+library(calibrate)
+library(ggplot2)
+data("plasma", package = "HSAUR3")
+
+# create a categorical variable based on ESR
+ESRvar <- ifelse(regexpr('>',plasma$ESR)==-1, 0,1)
+
+# create a linear model
+fm <- ESRvar ~ (fibrinogen + globulin)
+plasma.lm <- lm(fm, data=plasma)
+
+# get the standardized residuals for the model
+plasma.stres <- rstandard(plasma.lm)
+
+# plot the residuals against observations
+plot(as.integer(row.names(plasma)), plasma.stres, ylab="Standardized Residuals", xlab="Observation")
+abline(0,0)
+textxy(row.names(plasma), plasma.stres, row.names(plasma))
+
+
+```
+
+As we already know that the anything below first quartile + 1.5(IRQ) and anything above the third quartile - 1.5(IRQ) is considered a outliers.From the graphs, we came to know that point 15 and the point 23 lies farthest from point zero. Therefore, the point 15 and the point 23 is the outliers. 
+
+
+2. (Multiple Regression) Continuing from the lecture on the \textbf{hubble} data from \textbf{gamair} library;
+
+a) Fit a quadratic regression model, i.e.,a model of the form
+$$\text{Model 2:   } velocity = \beta_1 \times distance + \beta_2 \times distance^2 +\epsilon$$
+```{r}
+data("hubble", package = "gamair")
+# head(hubble)
+
+cat("Visualizing the data")
+plot(hubble$x, hubble$y, pch= 20, col = "blue",  main = "Relationship between distance and velocity", xlab ="Distance", ylab = "Velocity")
+
+# creating second degree variable 
+hubble$x2 <- hubble$x^2
+
+# fiting the quadratic model
+quadModel <- lm(y~x+x2-1, data = hubble) # -1 to remove the intercept 
+
+# View model summary
+summary(quadModel)
+
+```
+     
+I have performed the quadratic model whose basic formula is y = ax^2 + b x + c where C = Y-intercept. In the model, -1 is used to exclude y-intercept because the intercept hasn't added anything to the model. When we remove -1 from the model, we get intercept -196.364 which means when x(distance) = 0 the velocity will be -196.364, which is not possible so, the intercept is removed.
+The residuals are the distance of data from the fitted line. From the model, we find out that the median of the data is 29.7. Data is slightly skewed towards left. We can find this by analyzing the data of q1 and q3, if the value of q1 and q3 is equidistance from the median, then the data will be normally distributed. The coefficients say the values for the least-squared estimates for the fitted lines. The standard error and the t-value identifies how P-value were calculated. The most important to view in summary is P-value. The model is identified as statistically significant if the value of P is less than or equal to 0.05. Here we will consider the value of intercept but will need the value of x and x-square. The value of 'x' is 0.002, which is statistically significant.The standard error of the model is 260.1 with 21 DF and the multiple R-squared value is 0.7651, which means the value x can explain 76.51% in the 'y'.
+       
+       
+b) Plot the fitted curve from Model 2 on the scatterplot of the data
+ 
+```{r}
+#range(hubble$x)
+xvalues <- seq(min(hubble$x),max(hubble$x),0.1)
+xvalues2 <- xvalues^2
+predicted <- quadModel$fitted.values
+data <- as.data.frame(cbind(x = hubble$x,predicted))
+
+# Scatter Plot
+plot.new()
+par(mfrow = c(1, 1), pty = "s")
+plot(y~x, data = hubble,col=20, main = "base R: Scatter plot with fitted curve ", xlab = "Distance", ylab = "Velocity")
+lines(data$x[order(data$x)], data$predicted[order(data$predicted)], col = "green")
+
+# ggplot
+library(ggplot2)
+ggplot(data = quadModel, aes(x = quadModel$model$x, y = quadModel$model$y)) +
+  geom_point(col="blue") +
+  geom_line(aes(x = quadModel$model$x, y = quadModel$fitted.values), colour = "green") +
+  labs(title = "ggplot: Scatter plot with fitted curve", x = "Distance", y = "velocity")
+
+
+
+```
+The above graphs is the base r and the ggplot graphs that explains the fitted model. The model we performed here is a quadratic model.
+    
+    
+
+
+
+c) Add the simple linear regression fit (fitted in class) on this plot-use different color and line type to differentiate the two and add a legend to your plot. 
+```{r}
+# Simple linear regression
+linearmodel <- lm(y~x-1, data = hubble)
+plot.new()
+par(mfrow = c(1, 1), pty = "s")
+plot(y~x, data = hubble, col = "blue",main = "base R: scatter plot for hubble data", xlab = "Distance", ylab = "Velocity")
+lines(data$x[order(data$x)], data$predicted[order(data$predicted)], col = "green")
+abline(linearmodel, lty=2, col=2)
+legend(2,1800,legend=c("Linear", "quadratic"),
+       col=c("red", "Green"), lty=1:2, cex=0.8, title="Model Types", text.font=3 )
+
+
+```
+
+The red color is the simple linear regression model and the green denotes the quadratic model of the data.
+
+
+
+d) Which model do you consider most sensible considering the nature of the data -looking at the plot?
+
+By looking at the graphs, linear regression fits the model better than the logistic regression because the linear regression includes the many points than the quadratic model. Also, the points seem to follow the line from bottom to top. However, there is no much difference between the two models.
+        
+    
+    
+e) Which model is better? - provide a statistic to support you claim. Note: The quadratic model here is still regarded as a ``linear regression`` model since the term ``linear`` relates to the parameters of the model and  not to the powers of the explanatory variables. 
+    
+```{r}
+      summary(quadModel) # # Quadratic regression model
+      mod.2 <- summary(quadModel)
+      summary(linearmodel)  # Simple linear model
+      hmod.1 <- summary(linearmodel) 
+      cat ("Adjusted R-square")
+      kable(cbind(Quadratic = mod.2$adj.r.squared, Linear = hmod.1$adj.r.squared), 
+            caption = "Adjusted R-square", row.names = FALSE )
+    
+```
+
+The statistic appears to support the simple linear regression as the better one. Here the simple linear regression's adjusted R is 0.9394, and the quadratic regression's adjusted R is 0.7428, which explains more variability in the data then the quadratic model. 
+        
+
+
+3. The \textbf{leuk} data from package \textbf{MASS} shows the survival times from diagnosis of patients suffering from leukemia and the values of two explanatory variables, the white blood cell count (wbc) and the presence or absence of a morphological characteristic of the white blood cells (ag). 
+
+
+a) Define a binary outcome variable according to whether or not patients lived for at least 24 weeks after diagnosis. Call it \textit{surv24}.
+
+```{r}
+    data("leuk", package = "MASS")
+# head(leuk)
+leuk$surv24 <- ifelse(leuk$time <= 24, 1,0)
+    
+```
+
+b) Fit a logistic regression model to the data with \textit{surv24} as response. It is advisable to transform the very large white blood counts to avoid regression coefficients very close to 0 (and odds ratio close to 1). You may use log transformation.
+
+```{r}
+    logreg <- glm(surv24 ~ log(wbc)+ag, data = leuk, family = binomial )
+#summary(logreg)
+summary(logreg)
+
+```
+
+ Here, I have performed the logistic model.The residuals are the distance of data from the fitted line. In the model, the median value is 0.6258. Data is normally distributed because the distance between q1 and the median is nearly equal to the distance between median and the q3.  If the value of q1 and q3 is equidistance from the median, then the data is considered to be normally distributed.The coefficients say the values for the least-squared estimates for the fitted lines. The standard error and the t-value identifies how P-value is calculated. The most important value to view in summary its P-value. The model is identified as statistically significant if the value of P is less than or equal to 0.05. Here, we may consider the value of intercept but necessarily needed. The value of log(WBC), the p-value is 0.1531, which is not statistically significant. The    value of the ag present is which is statistically significant with the P-value if 0.02, which means the Ag present can add the significant in the model. 
+       
+
+
+c) Construct some graphics useful in the interpretation of the final model you fit.
+
+```{r}
+   points.data <- seq(0, max(log(leuk$wbc)+ 4.5), by = 0.5) # +4.5 in order to equalize the length of data.
+    
+    # using the actual formula of Logistic regression to find the probability 
+    # of outcome with and without Ag
+    withag <- (exp(logreg$coefficients[1] +logreg$coefficients[2]*points.data + logreg$coefficients[3])/(1+exp(logreg$coefficient[1] + logreg$coefficients[2]*points.data + logreg$coefficients[3])))
+    
+    
+    # Logestic regression without AG
+    withoutag <-  exp(logreg$coefficients[1] +logreg$coefficients[2]*points.data)/(1+exp(logreg$coefficient[1] + logreg$coefficients[2]*points.data))
+    
+    
+    # combining the data into whole
+    original.data <- data.frame(logwbc = log(leuk$wbc), survival = leuk$surv24, Ag = leuk$ag, predprob= logreg$fitted.values)
+    mydata <- data.frame(points.data= points.data, with_ag = withag, without_ag= withoutag)
+    combined.data <- cbind(original.data,mydata)
+    
+    plot.new()
+par(mfrow = c(1, 1), pty = "s")
+plot(x = combined.data$logwbc, y = combined.data$predprob, col = combined.data$Ag, xlim = c(0,15), ylim = c(0,1), ylab = "Survive (Time, surv24wks)", xlab = "log (wbc counts)", main = "base R: plot of logistic model of Leuk data")
+lines(x = combined.data$points.data, y = combined.data$without_ag)
+lines(x = combined.data$points.data, y =combined.data$with_ag)
+legend("topleft", legend = c("Ag Absent", "Ag Present"), col = c("black", "red"), lty = c(1,1))
+
+
+ggplot(combined.data, aes(x = logwbc, y = predprob, colour = Ag)) + 
+  geom_point() +
+  # scale_colour_discrete(guide = FALSE) +
+  # guides(colour=FALSE) +
+  geom_line(aes(x = points.data, y = with_ag, colour = "present")) +
+  geom_line(aes(x = points.data, y = without_ag, colour = "absent")) +
+  labs ( title = "ggplot: plot of logistic model of Leuk data", x = "log of WBC count", y = "Survive (Time, surv24wks)")
+    
+line.1 <- combined.data[combined.data$Ag == 'absent', ]
+line.2 <- combined.data[combined.data$Ag == 'present', ]
+# plot.new()
+par(mfrow = c(1, 1), pty = "s")
+plot(
+  x = combined.data$logwbc,
+  y = combined.data$survival,
+  xlim=c(0,15),
+  ylim = c(0,1),
+  col = combined.data$Ag,
+  xlab = "WBC counts",
+  ylab = "Probability of Death prior to 24 Weeks",
+  main = "base R: Survival Vs WBC Counts in Leukaemia Patients"
+)
+lines(points.data, combined.data$with_ag, col = "green")
+lines(points.data, combined.data$without_ag, col = "black")
+legend(
+  "topleft",
+  title = "AG test",
+  legend = c("absent", "present"),
+  inset = c(1, 0),
+  xpd = TRUE,
+  horiz = FALSE,
+  col = c("black", "green"),
+  lty = c(1,1),
+  pch = c(1, 2),
+  bty = "n"
+)
+
+  ggplot(combined.data, aes(x = logwbc, y = survival, color = Ag)) +
+  geom_point() +
+  scale_colour_manual(name = "AG test", values = c('black', 'green')) +
+  geom_line(aes(x = points.data, y = with_ag, colour = "present")) +
+  geom_line(aes(x = points.data, y = without_ag, colour = "absent")) +
+  labs(title = 'ggplot: Survival Vs WBC Counts in Leukaemia Patients',
+       x = 'log WBC Count',
+       y = 'Probability of Death prior to 24 Weeks') +
+  theme_classic()  
+
+
+```
+
+
+    
+d) Fit a model with an interaction term between the two predictors. Which model fits the data better? Justify your answer.
+
+```{r}
+    require(knitr)
+     logreg2 <- glm(surv24 ~ log(wbc)*ag, data = leuk, family = "binomial")
+    kable(summary(logreg2)$coefficient)
+    # summary(logreg)
+    
+    # Calculating r-square
+    library(rsq)
+    logreg.evalu = rsq(logreg, adj=TRUE, type=c('v','kl','sse','lr','n'))
+    logreg2.evalu = rsq(logreg2,adj=TRUE,type=c('v','kl','sse','lr','n'))
+    
+    data.com <- rbind(logreg.evalu, logreg2.evalu)
+    row.names(data.com) <- c("Linear model ", "Linear model with interation")
+    kable(data.com, col.names = "Adjusted R-square values")
+```
+
+
+
+
+Since the adjusted R square is higher for the model with interaction. Therefore the model with the interaction fits the model better.
+
+
+
+4. Load the \textbf{Default} dataset from \textbf{ISLR} library. The dataset contains information on ten thousand customers. The aim here is to predict which customers will default on their credit card debt. It is a four-dimensional dataset with 10000 observations. The question of interest is to predict individuals who will default . We want to examine how each predictor variable is related to the response (default). Do the following on this dataset 
+
+a) Perform descriptive analysis on the dataset to have an insight. Use summaries and appropriate exploratory graphics to answer the question of interest.
+    
+b) Use R to build a logistic regression model. 
+  
+c) Discuss your result. Which predictor variables were important? Are there interactions?
+    
+d) How good is your model? Assess the performance of the logistic regression classifier. What is the error rate? 
+
+    ```{r}
+    data("Default", package = "ISLR")
+    kable(summary(Default[,1:2]), caption = "summary of default and the student status")
+    kable(summary(Default[,3:4]),caption = "Summary of Balance and Income")
+    
+    #create default binary
+    # For default
+    binary_def<- ifelse(regexpr('Yes', Default$default) == -1, 0, 1)
+    def_str <- ifelse(regexpr('Yes', Default$default) == -1,
+         "Not Defaulted", "Defaulted")
+    # For student
+    
+    std <- ifelse(regexpr('Yes', Default$student) == -1, 0, 1)
+    std_str <-ifelse(regexpr('Yes', Default$student) == -1, "Not-Student", "Student")
+    
+    blnc <- Default$balance
+    incm <- Default$income
+    
+    my.df <-  data.frame(binary_def, def_str, std, std_str, blnc, incm)
+    
+    
+    # Visualizing the data 
+    
+    par(mfrow=c(1,1))
+    # Histogram of Balance
+    hist(blnc,
+         main = "Balance",
+         xlab = "Balance of customer",
+         border = "blue",
+         col = "Pink")
+    # Histogram of Imcome 
+     hist(incm,
+         main = "Income",
+         xlab = "Income of customer",
+         border = "Red",
+         col = "Grey")
+     
+     layout(matrix(1:2, ncol = 2))
+     hist(
+       subset(my.df$incm,my.df$std == 1),
+       main = "Income of student status",
+       xlab = "Student: Yes",
+       ylab = "Income",
+       border = "Yellow",
+       col = "maroon"
+     )
+     hist(
+       subset(my.df$incm,my.df$std == 0),
+       main = "Income of student status",
+       xlab = "Student: No",
+       ylab = "Income",
+       border = "Yellow",
+       col = "maroon"
+     )
+     
+     layout(matrix(1:2, ncol = 2))
+     hist(
+       subset(my.df$incm,my.df$binary_def == 1),
+       main = "Income of default status",
+       xlab = "Default: Yes",
+       ylab = "Income",
+       border = "Yellow",
+       col = "magenta"
+     )
+     hist(
+       subset(my.df$incm,my.df$binary_def == 0),
+       main = "Income of default status",
+       xlab = "Default: No",
+       ylab = "Income",
+       border = "Yellow",
+       col = "magenta"
+     )
+     #plot.new()
+    # par(mfrow = c(1, 1), pty = "s")
+     plot(
+       Default$income ~ Default$balance,
+       col = Default$student,
+       main = "base R: Income by Balance",
+       ylab = "Income",
+       xlab = "Balance",
+       pch = 18
+       )
+     legend(
+       "topright",
+       c("Yes", "No"),
+       title = "Student",
+       fill = c("Red", "Green"),
+       pch = c(18,18)
+       )
+     ggplot(data = Default, aes(x = balance, y = income, colour = student)) + 
+     geom_point() +
+     labs(title = "ggplot: Income by Balance") + 
+     guides(colour=guide_legend(title="Student?")) +
+     scale_color_manual(values = c("No" = "Red", "Yes" = "Green"))
+     
+     plot.new()
+     par(mfrow = c(1, 1), pty = "s")
+     boxplot(balance~student, data = Default, main = "base R: Balance grouped by Student status",
+             xlab = "student", ylab = "balance")
+     
+     ggplot(data = Default, aes(x = student, y = balance)) +
+       geom_boxplot() +
+       labs(title = "ggplot: Balance grouped by Student status")
+     
+     plot.new()
+     par(mfrow = c(1, 1), pty = "s")
+     boxplot(balance~default, data = Default, main = "base R: Balance grouped by Default status")
+     
+     ggplot(data = Default, aes(x = default, y = balance)) +
+       geom_boxplot() +
+       labs(title = "ggplot: Balance grouped by Default status")
+
+    plot.new()
+    par(mfrow = c(1, 1), pty = "s")
+    boxplot(income~student, data = Default, main = "base R: Income grouped by Student status")
+
+    ggplot(data = Default, aes(x = student, y = income)) +
+    geom_boxplot() +
+    labs(title = "ggplot: Income grouped by Student status")
+   
+     plot.new()
+    par(mfrow = c(1, 1), pty = "s")
+    boxplot(income~default, data = Default, main = "base R: Income grouped by Default status")
+    
+    ggplot(data = Default, aes(x = default, y = income)) +
+    geom_boxplot() +
+    labs(title = "ggplot: Income grouped by Default status")
+
+
+    
+    tapply(my.df$incm,my.df$def_str, FUN=summary)
+    
+    tapply(my.df$blnc, my.df$def_str, FUN = summary)
+    
+    
+    cat("#B. Use R to build a logistic regression model")
+    regression.model <- glm(binary_def ~ std + blnc + incm, family = binomial())
+    summary(regression.model)
+    
+    cat("Then with interactions:")
+    regression_model1 <- glm(binary_def ~ std + blnc + incm + std * blnc + std * incm + blnc * incm, family = binomial())
+    summary(regression_model1)
+    
+    
+    cat("# D. Error Rate")
+    fitted_model <- predict(regression.model, type = "response")
+    fitted_model1 <- predict(regression_model1, type = "response")
+    
+    levs <- c("Defaulted", "Not Defaulted")
+    Tr <- binary_def
+    Predicted.o <-
+      factor(ifelse(fitted_model >= 0.50, "Defaulted", "Not Defaulted"),
+         levels = levs)
+    Predicted1 <-
+      factor(ifelse(fitted_model1 >= 0.50, "Defaulted", "Not Defaulted"),
+         levels = levs)
+    Tr1 <-
+      factor(ifelse(Tr >= 0.50, "Defaulted", "Not Defaulted"), levels = levs)
+    rate.o <- table(Predicted.o, True = Tr1)
+    rate1 <- table(Predicted1, True = Tr1)
+    rate.o
+    
+    
+    error_rate.o <- 1 - (rate.o[1, 1] + rate.o[2, 2]) / sum(rate.o)
+    error_rate.o
+    
+    
+    rate1
+    error_rate1 <- 1 - (rate1[1, 1] + rate1[2, 2]) / sum(rate1)
+    error_rate1
+    
+    
+    cat("analysis of variance")
+    anova(regression.model, regression_model1, test = 'Chisq')
+
+    
+    
+    ```
+Based on the output of the data following result can be seen:
+- Fewer people default than don’t default.
+-Defaulters and non-defaulters appear to have the same income range, given student status.
+-Defaulters appear to have higher balances.
+-If students default, they likely do it with over $1,000 balance.
+-If non-students default, they are likely do it with over $500 balance.
+
+
+
+Without taking interactions into account, it appears that two predictors-student and balance are significant. With interactions involved, it appears that only balance predictor is important.
+
+
+The model with interaction has the AIC 1585.1  and 1579.5 for the model without interaction. The value is slightly higher. Therefore, the model with AIC is better.Also,since analysis of deviance also shows that the     chi-square test has no significance at 5% level, we can conclude that both models are almost the same as a working model
+
+
+
+
+5. Go through Section 7.3.1 of the Handbook. Run all the codes (additional exploration of data is allowed) and write your own version of explanation and interpretation.
+
+
+```{r}
+data("plasma", package = "HSAUR3")
+layout(matrix(1:2, ncol = 2))
+cdplot(ESR ~ fibrinogen, data = plasma)
+cdplot(ESR ~ globulin, data = plasma)
+```
+
+Form the graphs it appears as the value of fibrinogen to the ESR drops drastically. Likewise in globulin the value does not drops drastically.
+
+Performing the logistic regression
+
+
+```{r}
+plasma_glm_1 <- glm(ESR ~ fibrinogen, data = plasma,family = binomial())
+confint(plasma_glm_1, parm = "fibrinogen")
+```
+```{r}
+summary(plasma_glm_1)
+```
+
+The summary output indicates a 5% significance of fibrinogenand and increase of the log-odds of ESR > 20 by about 1.83 with confidence interval (CI) of 0.33 to 3.99.
+
+```{r}
+exp(coef(plasma_glm_1)["fibrinogen"])
+```
+Fibrinogen might have value as a predictor of ESR. To make the results more readable, it is useful to apply an exponent function. This exponenetiates the log-odds of fibriogen and CI to correspond with the data.
+
+
+```{r}
+exp(confint(plasma_glm_1, parm = "fibrinogen"))
+```
+
+We can also perform logistic regression of both fibrinogen and globulin and text for the deviance.
+
+```{r}
+plasma_glm_2 <- glm(ESR ~ fibrinogen + globulin,data = plasma, family = binomial())
+summary(plasma_glm_2)
+anova(plasma_glm_1, plasma_glm_2, test = "Chisq")
+
+```
+Now, we can make the bubble plot of the predicted values of model II (plasma_glm_2). The plot shows that the probablity of ‘good’ ESR reading increases as fibrinogen increases. This is true of globulin only up to a point.
+
+```{r}
+prob <- predict(plasma_glm_2, type='response')
+plot.new()
+par(mfrow = c(1, 1), pty = "s")
+plot(globulin ~ fibrinogen,data=plasma,xlim=c(2,6),ylim=c(25,55),pch='.', main = "Bubble plot of the predicted values of model II")
+symbols(plasma$fibrinogen,plasma$globulin,circles=prob,add=T)
+
+```
+
+
