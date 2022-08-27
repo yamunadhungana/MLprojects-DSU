@@ -1,0 +1,430 @@
+---
+title: "Data Analysis using Graphs from HSAUR"
+author: "Yamuna Dhungana"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F,warning=F,echo=F,fig_height=10,fig_width=7,cache = F)
+```
+The following questions are from **Handbook of Statistical Analyses in R** (HSAUR) and the written questions. Refer to **R Graphics Cookbook or Modern Data Science with R** 
+
+1. Question 1.1, pg. 23 in **HSAUR**. *You will need to make some assumptions to answer this question. State how you interpret the question and list your assumptions*.
+
+
+Here, let us assume the data we have the data given and we will remove all the NAs from the data. 
+
+```{r ,warning=FALSE}
+library('HSAUR3')  #loading the library
+# head(Forbes2000) # Viewing top 6 data of the dataframe Forbes2000
+
+
+# creating a different dataframe with the data of country named in question.
+subset.bycountry <- subset(Forbes2000, country %in% c("United States","United Kingdom","France","Germany"))
+
+
+# first calculating the median by removing all the NAs, and naming this data as country and median
+by.country <- setNames(aggregate(subset.bycountry$profits, by = list(subset.bycountry$country), function(x){median(x,na.rm=T)}), c("country", "median"))
+
+
+# printing the median profit of those country
+by.country
+
+
+```
+Here, we got the median of the profit for the four countries.
+
+
+
+2. Question 1.2, pg. 23 in **HSAUR**
+    
+    
+```{r}
+# From the data Forbes2000 selecting only those "Name whose country is Germany and whose profite is less than zero
+Forbes2000[Forbes2000$country == "Germany" & Forbes2000$profits < 0, "name"]
+
+```
+The basic concept of mathematics says that zero is the point of neutralization or the neutral point.Neither profit nor loss is seen at a point. Values less than zero are loss whereas, values greater than zero are profit. I am using the same concept for coding in this question.
+
+
+3. Question 1.3, pg. 23 in **HSAUR**
+
+```{r}
+# Sorting the data in decreasing order gives the max to min no of categories for Bermuda island's companies.
+
+sort(table(Forbes2000[Forbes2000$country == "Bermuda", "category"]),decreasing = TRUE)
+# head(business.category)
+
+```
+
+     
+The maximum no of business that the Burmuda island's company involved was insurance. Likewise, there were also involved in Conglomerates, Oil & gas operations, and six more other categories.
+
+
+4. Question 1.4, pg. 23 in **HSAUR**
+
+```{r}
+# Arranging the data according to the profit in decending order 
+forbes.data <- Forbes2000[order(Forbes2000$profits,decreasing= TRUE),] 
+plot(
+    log(forbes.data[1:50, "assets"]), # since data was wide spread there fore using the log scale
+    log(forbes.data[1:50, "sales"]), # 1:50 because 50 most profitable company is to be plotted 
+    ylab = "sales (log scale)",
+    xlab = "assets (log scale)",
+    main = "Sales vs Assets: Log transformed")
+text(
+    x = log(forbes.data[1:50, "assets"]),
+    y = log(forbes.data[1:50, "sales"]),
+    labels = abbreviate(forbes.data$country[1:50]),
+    col = "blue",
+    font = 1,
+     cex= 0.4,
+    pos = 1
+)
+
+
+library(ggplot2)
+ggplot(forbes.data[1:50, ], aes(x = log(assets), y = log(sales))) +
+    geom_point(shape = 1, size = 2) +
+    geom_text(aes(label = abbreviate(country)), hjust = 0, cex= 2, vjust = 0,col = "blue",
+    font = 1) +
+    labs(title = "Sales vs Assets: Log transformed", color = "country")
+
+
+
+
+```
+
+
+5. Question 1.5, pg. 23 in **HSAUR**
+
+```{r,warning=FALSE}
+# here every data is in the billion USD
+Subset.sales <- Forbes2000[,c("country","sales","profits")]
+
+sales.USD <- 
+  setNames(aggregate(Subset.sales$sales, by = list(Subset.sales$country), 
+                     function(x){mean(x,na.rm=T)}), c("country", "mean_sales"))
+head(sales.USD)
+
+require(dplyr)
+Lessthan5b.data <- na.omit(Subset.sales[Subset.sales$profits >= 5,])
+Lessthan5b.data %>% count(country)
+
+
+```
+
+
+The first data denotes the mean sales of the company of the countries, the Second data denotes the number of companies that have profited more than 5 billion dollars.Here United states have the maximum no of companies that has the companies whose profit is more than 5 billion dollars. There were 20 such countries in the United States. Likewise, there were 3-3 companies in the United Kingdom and Switzerland.
+
+
+6. Question 2.1, pg. 41 in **HSAUR**
+
+```{r,warning=FALSE}
+data("household", package = "HSAUR3")
+head(household)
+
+# Adding all the expances to find the total. Including Total as column for the dara House hold
+household$Total <- household$housing+household$food+household$goods+
+  household$service
+
+# head(household)
+
+# plotting genders VS total to know which gender has high expanditure
+par(mfrow=c(2,2))
+boxplot(household$Total ~ household$gender,
+data= household,
+main="Box plot plotted with total against gender",
+xlab="Gender",
+ylab="Total Expanditure",
+col="Blue",
+border="Red"
+)
+
+# plot via ggplot
+ggplot(household, aes(x=gender, y=Total))+geom_boxplot() +
+  labs(title = "Total expenses per gender") + 
+  theme_classic()
+
+
+# Converting into the same units
+household$housing <- household$housing/household$Total
+household$food <- household$food/household$Total
+household$goods <- household$goods/household$Total
+household$service <- household$service/household$Total
+
+library(ggplot2)
+a <- ggplot(household, aes(x= gender,y=housing))+geom_boxplot()+
+              labs(title = "Housing expenses vs gender(in %)")
+b <- ggplot(household, aes(x= gender,y=food))+geom_boxplot()+
+              labs(title = "Food vs gender (in %)")
+c <- ggplot(household, aes(x= gender,y=goods))+geom_boxplot()+
+              labs(title = "Goods vs gender (in %)")
+d <- ggplot(household, aes(x= gender,y=service))+geom_boxplot()+
+              labs(title = "Service vs gender (in %)")
+
+# COmbine all plot in one 
+library(gridExtra)
+grid.arrange(a,b,c,d, nrow=2, ncol=2)
+
+par(mfrow=c(2,2))
+boxplot(household$housing ~ household$gender,
+data= household,
+main="Box plot plotted with housing against gender (in %)",
+xlab="Gender",
+ylab="Housing",
+col="Blue",
+border="Red"
+)
+
+boxplot(household$food ~ household$gender,
+data= household,
+main="Box plot plotted with food against gender (in %)",
+xlab="Gender",
+ylab="Food",
+col="Blue",
+border="Red"
+)
+boxplot(household$good ~ household$gender,
+data= household,
+main="Box plot plotted with good against gender (in %)",
+xlab="Gender",
+ylab="Food",
+col="Blue",
+border="Red"
+)
+
+boxplot(household$service ~ household$gender,
+data= household,
+main="Box plot plotted with service against gender (in %)",
+xlab="Gender",
+ylab="Service",
+col="Blue",
+border="Red"
+)
+
+
+ggplot(household, aes(x=Total, fill=gender)) +
+  geom_histogram(position="identity", alpha=0.4, binwidth = 1000) + 
+  labs(title = "Histogram of total expenditures by gender" ) + 
+  theme_classic()
+
+```
+
+From the graph named, "Box plot plotted with total against gender", "Total expenses per gender" it is visible that the male spends more money on food, goods, service, and housing than the female.The graph-3 and graphs-4 are plotted with the housing, food, goods, and service against gender. These two graphs are similar only plotted with base R and ggplot.
+From the first graphs of graphs-3 and graphs-4, the expenditure on housing is much larger for female than a male. The second graph(right) shows the expanses in food. The female spends much less money on food than a male. The difference in the expenditure seems much larger.From the graphs, the lower-left denotes the graphs for goods. According to the graphs, the male and female expenditure is equal for good. Likewise, in the last graphs (last right) which is plotted for the service. This graph shows the expenditure on service, which is much less for females than males. The male spent more money on service.Hence, we can understand that males spend more money on food and service. Females spent more money on housing and both genders spent nearly equal money on goods.
+The last graph denotes the histograms for both females and males. The female spends less than 3000 whereas male spent less than 10,000.
+    
+    
+7. Question 2.3, pg. 44 in **HSAUR**
+
+```{r,warning=FALSE}
+data("suicides2", package = "HSAUR3")
+# head(suicides2)
+
+boxplot(suicides2,
+data= suicides2,
+main="Box plot plotted with suicides per 10K Vs age",
+xlab="Age",
+ylab="Suicide per 10K",
+col="Blue",
+border="Red"
+)
+
+library(reshape2)
+sucicide.melted <- melt(suicides2)
+ggplot(sucicide.melted, aes(x= factor(variable),y=value))+
+  geom_boxplot()+
+  labs(title = "Box plot plotted with suicides per 10K Vs age")+
+  xlab("Age") + ylab("Suicide per 10K")
+
+```
+There are two graphs named, "Box plot plotted with suicide per 10k vs age". This is plotted with the same data. One of them is with base and the other with a plot. From the graphs, we can see the suicide among the different age groups. The age group between 35 to 54 has outliers. The plot of age 55 to 64 has a slightly large suicide rate than other age groups. The age group between 25 to 34 and 35 to 44 is similar. These two groups are slightly smaller than others.The other thing that we can see from the graphs is that the median of all the age groups is somewhat equal.
+    
+    
+    
+8. Using a single R statement, calculate the median absolute deviation, $1.4826\cdot median|x-\hat{\mu}|$, where $\hat{\mu}$ is the sample median. Use the dataset \textbf{chickwts}. Use the R function `mad()` to verify your answer.
+
+```{r}
+# head(chickwts)
+1.4826*(median(abs(chickwts$weight- median(chickwts$weight))))
+    
+
+mad(chickwts$weight, center = median(chickwts$weight), constant = 1.4826)
+```
+Both the methods exihibit the same result.
+    
+
+9. Using the data matrix \textbf{state.x77}, find the state with the minimum per capita income in the New England region as defined by the factor \textit{state.division}. Use the vector \textit{state.name} to get the state name.
+
+```{r}
+state.df <- data.frame(income=state.x77[,"Income"],
+                    name=state.name,
+                    div=state.division)
+newE.data <- subset(state.df,div== "New England")
+(newE.data[which(newE.data$income == min(newE.data$income)),])
+
+```
+The state with the minimum per capiya income in the New England region is Maine with the income 3694.
+    
+    
+10. Use subsetting operations on the dataset \textbf{Cars93} to find the vehicles with highway mileage of less than 25 miles per gallon (variable \textit{MPG.highway}) and weight (variable \textit{Weight}) over 3500lbs. Print the model name, the price range (low, high), highway mileage, and the weight of the cars that satisfy these conditions.
+
+```{r}
+
+data(Cars93,package= "MASS")
+# Cars93
+df.cars93 <- Cars93[Cars93$MPG.highway < 25 & Cars93$Weight > 3500, c("Model", "Price", "MPG.highway", "Weight")]
+df.cars93[with(df.cars93, order(Price)), ]
+
+```
+
+11. Form a matrix object named \textbf{mycars} from the variables \textit{Min.Price, Max.Price, MPG.city, MPG.highway, EngineSize, Length, Weight} from the \textbf{Cars93} dataframe from the \textbf{MASS} package. Use it to create a list object named \textit{cars.stats} containing named components as follows:
+
+
+a) A vector of means, named \textit{Cars.Means}
+
+```{r}
+data(Cars93,package= "MASS")
+mycars <- Cars93[,c("Min.Price","Max.Price","MPG.city","MPG.highway","EngineSize","Length","Weight")]
+cars.Means <- sapply(mycars, FUN = mean)
+cars.Means
+
+```
+
+b) A vector of standard errors of the means, named \textit{Cars.Std.Errors}
+
+```{r}
+std.error <- function(x){sqrt(var(x)/length(x))} #Sd = square root of variance 
+cars.std.Errors <- lapply(mycars, std.error)
+cars.std.Errors
+
+```
+
+12. Use the \texttt{apply()} function on the three-dimensional array \textbf{iris3} to compute:
+
+a) Sample means of the variables \textit{Sepal Length, Sepal Width, Petal Length, Petal Width}, for each of the three species \textit{Setosa, Versicolor, Virginica}
+    
+```{r}
+data(iris3)
+apply(iris3, c(2,3), FUN = mean) #c(2.3) is the margin across which we should perform the function. Since we don not need to perform across rowsbut using 2 (column) and 3 (calculating across column for the third dimension data as well)
+
+```
+
+b) Sample means of the variables \textit{Sepal Length, Sepal Width, Petal Width} for the entire data set.
+    
+```{r}
+apply(iris3,2,FUN = mean) # the margin = 2 because we are calculating across column for all data
+
+```
+
+13. Use the data matrix \textbf{state.x77} and the \texttt{tapply()} function to obtain:
+
+a) The mean per capita income of the states in each of the four regions defined by the factor \textit{state.region}
+    
+```{r}
+mydata <- data.frame(state.x77, state.region=state.region,stringsAsFactors = FALSE)
+tapply(mydata$Income,mydata$state.region,mean)
+
+```
+
+b) The maximum illiteracy rates for states in each of the nine divisions defined by the factor \textit{state.division}
+    
+```{r}
+mydata <- data.frame(state.x77, state.division=state.division,stringsAsFactors = FALSE)
+tapply(mydata$Illiteracy,mydata$state.division, max)
+
+```
+
+c) The number of states in each region
+
+```{r}
+mydata <- data.frame(state.x77, state.region=state.region, state.name=state.name, stringsAsFactors = FALSE)
+tapply(mydata$state.name,mydata$state.region,length)
+
+```
+
+    
+14. Using the dataframe \textbf{mtcars}, produce a scatter plot matrix of the variables \textit{mpg, disp, hp, drat, qsec}. Use different colors to identify cars belonging to each of the categories defined by the \textit{carsize} variable in different colors.
+
+```{r, eval=F, echo = F}
+carsize = cut(mtcars[,"wt"], breaks=c(0, 2.5, 3.5, 5.5), 
+labels = c("Compact","Midsize","Large"))
+cars.data <- data.frame(mtcars, carsize=carsize)
+
+# plot
+par(mfrow = c(1,1))
+pairs(~mpg+disp+hp+drat+qsec,data=mtcars,
+   main= "Scatterplot Matrix of mtcars", col = cars.data$carsize)
+# referance: https://www.statmethods.net/graphs/scatterplot.html
+
+library(ggplot2)
+library(GGally)
+# data %>% mutate(carsize = factor(carsize)) %>%
+# pairs(mydf[,c("mpg","disp","hp","drat","qsec")])
+ggpairs(cars.data[,c("mpg","disp","hp","drat","qsec")], aes(colour = carsize, alpha =0.5))
+    
+```
+    
+15. Use the function \texttt{aov()} to perform a one-way analysis of variance on the \textbf{chickwts} data with \textit{feed} as the treatment factor. Assign the result to an object named \textit{chick.aov} and use it to print an ANOVA table.
+
+```{r}
+    chick.aov <- aov( weight ~ feed, chickwts)
+    
+    # summary aov
+    summary.aov(chick.aov)
+    
+    # post-hoc test (Tukey HSD)
+    TukeyHSD(chick.aov)
+
+```
+
+16. Write an R function named \texttt{ttest()} for conducting a one-sample t-test. Return a list object containing the two components: 
+
+- the t-statistic named T;
+    
+- the two-sided p-value named P.
+    
+Use this function to test the hypothesis that the mean of the \textit{weight} variable (in the \textbf{chickwts} dataset) is equal to 240 against the two-sided alternative. \textit{For this problem, please show the code of function you created as well as show the output. You can do this by adding} `echo = T` \textit{to the code chunk header.}
+
+    
+```{r}
+library(HSAUR3)
+  library(stats)
+  attach(chickwts)
+  head(chickwts)
+  t.test(chickwts$weight, mu=240)
+  
+   ttest=function(x,mu,alpha){
+    # x = data
+    # mu = sample mean, 
+    # alpha = alpha 
+    # level = (1-confidence level)
+    me=mean(x$weight)
+    p1=qt(alpha/2,(nrow(x)-1))
+    p2=qt(1-alpha/2,(nrow(x)-1))
+    s=sqrt(var(x$weight))
+    n=nrow(x)
+    
+    T=(me-mu)/(s/sqrt(nrow(x))) 
+    P=seq(1,1,1)
+    P[1]=2*(1-pt(T,n))
+    P=data.frame(P)
+    return (cbind(P,T))
+  }
+  
+  t_test_values <- ttest(chickwts,240,0.05)
+  print ("T value and two sided P values returned by the funtion: ")
+  print(t_test_values)
+
+```
+
+
+```{r, message = TRUE}
+  message("Hypothesis Result:")
+  if (2*abs(t_test_values[1,2])>2*abs(t_test_values[1,1])){
+    print("Rejected! The true mean is NOT 240 !!")
+  } else if (2*abs(t_test_values[1,2])<2*abs(t_test_values[1,1])){
+    print("Null. The mean is 240 !!")
+  }
+```

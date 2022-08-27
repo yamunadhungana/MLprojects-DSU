@@ -1,0 +1,224 @@
+---
+title: "Analysis of Microtus data"
+author: "Yamuna Dhungana"
+output: pdf_document
+---
+
+
+The data was taken from “Discrimination between two species of Microtus using both classified 
+and unclassified observations journal of Theoretical Biology” by Airoldi, J.-P., B. Flury, M. 
+Salvioni (1996). Our dataset, Microtus used from the library “Flury”. The data consist of 288 no
+of samples of a vole, collected mostly in Europe (the Alps and Jura mountains) and in Toscana. The dataset was initiated by a data collection consisting of eight morphometric variables measured by one of the authors (Salvioni) using a Nikon measure-score(accuracy1/1000mm). 89 of the total data set is classified by its species with a detailed explanation of the chromosome data. Whereas the remaining 199 sets of data are yet to identify its species. Hence, the main objective of our finalproject is to predict the species of the unknown group. The data set consist of 288 observations with a factor indicating the species and observations on a further eight variables:
+Group: Species of the data with multiple, subterraneous, and unknown.M1Left: Width of the upper left molar 1 (0.001mm),M2Left: Width of the upper left molar 2 (0.001mm),M3Left: Width of the upper left molar 3 (0.001mm),Foramen: Length of incisive foramen (0.001mm)
+Pbone: Length of palatal bone (0.001mm), Length: Condylo incisive length or skull length (0.01mm), Height: Skull height above bullae (0.01mm), and Rostrum: Skull width across rostrum (0.01mm)
+
+In order to work on our problem, we must load our dataset Microtus and some of the libraries. Here I have loaded data and libraries. To begin with, I have visualized our data via pairwise plot to view the relation between the variables of the dataset.  
+
+
+```{r,echo=FALSE,warning=FALSE}
+# library(tidyverse)
+
+library(ggplot2)
+require(GGally)
+
+# loading the data
+data("microtus", package = "Flury")
+# dim(microtus) # Viewing the dimension of data
+# class(microtus) # viewing the type of data
+
+# plot(microtus)
+# microtus %>% ggpairs(., 
+#                mapping = ggplot2::aes(colour=Group), 
+#                lower = list(continuous = wrap("smooth", alpha = 0.3, size=0.1)))
+#  
+ggpairs(microtus, columns = 1:9, ggplot2::aes(colour=Group))
+
+```
+
+The pairwise plot shows the relationship between the variables. The upper right of the graph shows
+the correlation values between the variables. The lower left of the pairwise plot shows the scatter
+plot of the data. Likewise, the bar and the boxplot also can be seen in the plot. The graph at the diagonal is the density plot of the data. Color red representing the multiple, green as subterraneous,
+and blue as the unknown species. The coefficient for the variables in the upper-right of the plot shows most of the variables were either moderately or highly correlated with each other.
+
+
+The data is then divided into known and the unknown data for the further analysis. Then, we fit the logistic model to our data.
+
+## Logistic model
+
+```{r,echo=FALSE,warning=FALSE}
+
+my.data <- microtus
+
+my.data$Group=as.numeric(my.data$Group)-1
+Known_data <- subset(my.data, Group!= 2)
+unknown_data <- subset(my.data, Group==2)
+
+
+# Now we do logistic regression of our Model followed by AIC and p value checking
+model=glm(Group~M1Left+Height+Foramen,data=Known_data,family=binomial)
+
+summary(model)
+AIC(model)
+
+# MSE of the model
+MSE.glm <- mean((predict(model, newdata = Known_data, type = "response")-Known_data$Group)^2)
+MSE.glm
+
+cat("Cross validation with 10 fold: ")
+library(boot)
+(cv.err.10 <- mean(cv.glm(Known_data, model, K = 10)$delta))
+
+```
+
+The logistic model (GLM) with the formula `Group~M1Left+Height+Foramen`, where the group is the
+response and the other M1Left, Height, and foramen as the predictor variables. The deviance 
+residuals from the summary show that the data are negatively skewed. The variable L1left looks
+statistically significant at 0.05. The null deviance is 123.28 that shows how well our response 
+variable has predicted the outfitted model, including only the intercept (grand mean) whereas,
+residual deviance with 21.10 inclusion of independent variables. Deviance is a measure of the 
+goodness of fit of a model. The lowest numbers always indicate a good fit.
+The AIC of my first model, the logistic model, is 29.1. The Mean square error of my fitted model is
+0.0362. Whereas cross-validation with 10 fold is 0.0475, and it is slightly more than the mean square
+error. 
+
+
+
+## Decision tree
+
+Now, I also construct a regression tree selecting all the variables.
+```{r,echo=FALSE,warning=FALSE}
+library(rpart)
+library(party)
+library(partykit)
+dt1.tree <- rpart(Group~.,data= Known_data, control = rpart.control( minsplit = 10))
+plot(as.party(dt1.tree),
+     tp_args = list(id = FALSE))
+```
+
+Now, I also construct a regression tree selecting all the variables to see which variables were 
+chosen.  In the regression tree, the main root of the tree is M1Left with the height and M2Left. 
+These variables are the same as the model I chose above. These results seemed to follow the summary
+results from the model selected below with step regression, which is why the step model seems better 
+than my GLM above.
+
+Here, M2Left has replicated therefore, I plot the Mean DecreaseinGini plot. This plot shows the 
+average (mean) of a variable's total decrease in node impurity, weighted by the proportion of samples
+reaching that node in each individual decision tree in the random forest. A higher Mean Decrease in 
+Gini indicates higher variable importance. I would replace the duplicates with the other variable by
+viewing the importance of the variables from the mean DecreaseinGini plot.  
+
+```{r,echo=FALSE,warning=FALSE}
+require(randomForest)
+fit=randomForest(factor(Group)~.,data=Known_data)
+varImpPlot(fit)
+
+```
+The mean Decrease in Gini shows that the Foramen have the least importance whereas, M1Left and the 
+Rostrum variables have the highest importance. 
+
+
+## Stepwise selection
+
+In order to see which model performed better with the data, I used the stepwise selection method. 
+
+```{r,echo=FALSE,warning=FALSE}
+#use stepwise regression for the glm
+step_known <- step(glm(Group ~., data = Known_data, family = "binomial"), direction="both")
+
+#extract the formula with the lowest aic
+form_known <- formula(step_known)
+form_known
+
+model_step <- glm(Group ~ M1Left + M3Left + Foramen + Length + Height, data=Known_data,family=binomial)
+AIC(model_step)
+summary(model_step)
+
+# MSE from step regression best model
+MSE.glm_step <- mean((predict(model_step, newdata = Known_data, type = "response")-Known_data$Group)^2)
+MSE.glm_step
+
+cat("Cross validation with 10 fold: ")
+(cv.err_step.10 <- mean(cv.glm(Known_data, model_step, K = 10)$delta))
+
+```
+
+The third model that fitted is stepwise selection in the hope of obtaining a better model than
+the previous model. I hoped to improve the selection of variable in my model.First, I used all
+the variables in both directions. AIC of the stepwise selection varied from 30 to 27.7. The lowest
+of the AIC that we got is 27.7 with the group as the response variable and M1left + M3Left + Foramen+
+Length+ Height and the predictor variables. The previous models suggest that the height and the 
+foramen were not statistically significant, whereas this model suggests that using these variables
+gives us the lowest AIC. Therefore, this model indicates that the omission of Foramen and Length is
+not a good idea. With all the variables as the predictor variable, The AIC of the model is the highest
+whereas, eliminating two variables M2Left and Rostrum, decreased AIC to the lowest was interesting 
+to view how the elimination can change the performance of the model. The MSE of the model is 0.027
+is slightly smaller than the Logistic model. The CV of the model is 0.060 is slightly more than the
+above model.
+
+
+Hence, eventually, the best model that I chose from the step selection will use this model for 
+predicting the rest of the unknown data (species). The AIC for this model was 27.70 is smaller
+(thus better) than our previous models. Also, the MSE for this model was only 0.027 is smaller 
+(thus better) than our previous models. Also, the cross-validation error was 060 is a bit higher
+than our MSE, but still better than the CV of our model. Anyway, I will be selecting this model 
+with AIC 0.27 from obtained step regression for the prediction purpose.
+
+The unknown data is predicted and the 5 of them is also printed below. 
+
+```{r,echo=FALSE,warning=FALSE}
+Known_data <- subset(my.data, Group!= 2)
+unknown_data <- subset(my.data, Group==2)
+
+# Using chosen model from stepwise regression
+Final_formula=Group~M1Left+M3Left+Foramen+Height+ Length
+model=glm(Final_formula,data=Known_data,family=binomial)
+pred=predict(model,newdata=unknown_data,type="response")
+summary(model)
+for(j in 1:nrow(unknown_data)){
+  if(pred[j]<0.5)
+  {unknown_data[j,1]="multiplex"}
+  if(pred[j]>=0.5){unknown_data[j,1]="subterraneous"}
+}
+
+cat("This is the first 5 rows of the predictions for unclassified observations")
+head(unknown_data,5) 
+```
+
+Now, I want to count the total no of predicted values. We found out that 129 of the total unknown 
+data is classified as the multiplex species and 70 of the total unknown data is classified as the subterraneous species. 
+
+```{r,echo=FALSE,warning=FALSE}
+cat("Count of predicted class:")
+table(unknown_data$Group)
+
+```
+
+
+
+
+
+
+
+```{r,echo=FALSE,warning=FALSE}
+# http://www.public.asu.edu/~gwaissi/ASM-e-book/module403.html
+# https://stats.stackexchange.com/questions/409537/how-to-include-an-interaction-with-a-
+# quadratic-term
+# http://www.public.asu.edu/~gwaissi/ASM-e-book/module403.html
+# https://cran.r-project.org/web/packages/interactions/vignettes/interactions.html
+# https://mattchoward.com/quadratic-regression-in-r/
+# https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.738.1654&rep=rep1&type=pdf
+# http://www.shodor.org/interactivate/discussions/BivariateDataRelations/
+# https://stat.ethz.ch/pipermail/r-help/2011-September/289291.html
+# https://blog.minitab.com/blog/adventures-in-statistics-2/regression-analysis-how-do-i-
+# interpret-r-squared-and-assess-the-goodness-of-fit
+# https://www.scribbr.com/statistics/multiple-linear-regression/
+# https://api.rpubs.com/tomanderson_34/lrt
+# The evidential value of microspectrophotometry measurements made for pen inks Martyna et al. (2013)
+# # referance : Brian S. Everitt, Torsten Hothorn - A handbook of statistical analyses using R-CRC 
+# (2010)
+
+
+
+```
+
+

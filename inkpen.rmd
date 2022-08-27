@@ -1,0 +1,377 @@
+---
+title: "Determining relationship between the marginal LR and the omnibus LR"
+author: "Yamuna Dhungana"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+The data is taken from "The evidential value of micro spectrophotometry measurements
+made for pen inks", by Martyna et al. (2013). The author was focused on developing a 
+type of similarity score, between two ink samples, known as a forensic likelihood ratio.
+The sample for the data was taken from the 40 inks.  36 of the 40 ins was from the ballpoint 
+pen, and 4 of the ink is from the gel pen. They came either from the Polish market or were 
+gifted presented to the institute of Forensic Research. Lines were created
+by drawing on the white printing paper. The fragment of paper was viewed on the microscope. 
+The colors used for the analysis were red, green, and blue.  The data are given in the dat.LLR.int file has a total of 820 samples with the six variables.
+The variables described as:
+1.	Comp : comparison of interest (from 1 to 820)
+2.	Omni.LLR.int : numeric values of for the Log of the Omnibus likelihood ratio.
+3.	Type : Type of comparison, either “wi” for within-source comparison or “bw” for between-source comparison
+4.	LLR.x : The Log Likelihood ratio for the X color variable
+5.	LLR.y : The Log Likelihood ratio for the Y color variable
+6.	LLR.z : The Log Likelihood ratio for the Z color variable
+
+The point of interest in our project is to find the relationship between the marginal 
+LR’s (i.e. LLR.x, LLR.y, and LLR.z) and the Omnibus LR (i.e. Omni.LLR.int).
+
+After loading the data, the values of the data are visualized. From the graphs, it looks like all
+the variables individually have some relationship with omnibus LR.  All the variable seems to have
+a linear relationship(quadratic); however, we cannot say and assume to have it until we have some evidence.
+ To start with, I have plotted a pair-wise plot and see their correlation plot with coefficients. 
+ For the correlation plot, the correlation between LLR.x, LLR.y, and LLR.z look moderately correlated
+ with the 0.78, 0.67, and 0.659, respectively. 
+
+```{r,echo=FALSE,warning=FALSE}
+library(ggplot2)
+library(GGally)
+
+an.data <- 
+  read.csv(file = 'https://raw.githubusercontent.com/yamunadhungana/data/master/dat.LLR.int.csv', sep = ",")
+# head(an.data)
+
+ggpairs(an.data, columns = 1:7, ggplot2::aes())
+
+par(mfrow=c(2,2))
+plot(Omni.LLR.int~LLR.x, xlab="Color X",type = "p", col = "blue", cex= 0.3, pch = 20, main= "Relationship with Omni.LLr and color X", data = an.data)
+plot(Omni.LLR.int~LLR.y, xlab="Color y", type = "p", col = "blue", cex= 0.3,  pch = 20, main= "Relationship with Omni.LLr and color Y", data = an.data)
+plot(Omni.LLR.int~LLR.z, xlab="Color Z", type = "p", col = "blue", cex= 0.3, pch = 20, main= "Relationship with Omni.LLr and color Z", data = an.data)
+
+```
+Further, I have made a combination of different variables and different interactions.
+The model that follows in the project is a single variable, two variables (also variables
+with interactions), and three variables. I have plotted a total of 11 models for linear
+regression.
+
+
+# 1. Linear regression 
+
+Firstly, I Fit the linear regression and viewed the p- values and R- squared. Then the 
+MSE is calculated. Additionally, to make sure, the same process was repeated to see
+P-values and MSE for the quadratic models. Finally, I performed the Anova to test to see 
+the better fit.
+
+The model mentioned for a single variable is fitted with the LLR.x, LLR.y, and LLR.z with
+Omnibus.LLR  individually as `Omni.LLR.int ~ LLR.x`, `Omni.LLR.int ~ LLR.y`, `Omni.LLR.int
+~ LLR.z`  In the two pair models, I combined these variables and also saw the interaction with
+these variables. The same method follows with the three variables. Although the table is made
+individually according to no of the variable used, these variables are combinedly compared. Mean
+square error is the average squared difference between the estimated values and the actual value.
+The low MSE is always better. Therefore, by looking at the table for the MSE of a model the decision
+is taken. Hence by the MSE, all the variables combined have the linear regression.
+
+# 1.1 Linear regression for single variable
+```{r,echo=FALSE,warning=FALSE}
+
+model1 <- lm(Omni.LLR.int~LLR.x, data = an.data)
+# summary(model1)
+model2 <- lm(Omni.LLR.int~LLR.y, data = an.data)
+# summary(model2)
+model3 <- lm(Omni.LLR.int ~ LLR.z, data = an.data)
+# summary(model3)
+
+# MSE for these terms 
+MSE_model1 <-
+  mean((predict(model1, newdata = an.data, type = "response")-an.data$Omni.LLR.int)^2)
+
+MSE_model2 <-
+  mean((predict(model2, newdata = an.data, type = "response")-an.data$Omni.LLR.int)^2)
+
+MSE_model3 <-
+  mean((predict(model3, newdata = an.data, type = "response")-an.data$Omni.LLR.int)^2)
+
+
+# MSE for the these model
+no_int <- cbind(MSE_model1, MSE_model1,MSE_model3)
+colnames(no_int) <- c("Model-1", "MOdel-2", "model-3")
+knitr::kable(no_int, digits = 3,
+             caption = "MSE for linear regression model with single variable")
+
+```
+
+
+# 1.2 Linear Regression for two pair
+
+```{r,echo=FALSE,warning=FALSE}
+
+model1_a <- lm(Omni.LLR.int~LLR.x+ LLR.y, data = an.data)
+model2_a <- lm(Omni.LLR.int~LLR.y+ LLR.z, data = an.data)
+model3_a <- lm(Omni.LLR.int~LLR.z+ LLR.x, data = an.data)
+
+
+# Adjusted R
+ad_r1a.lm <- summary(model1_a)$r.squared
+ad_r2a.lm <- summary(model2_a)$r.squared
+ad_r3a.lm <- summary(model3_a)$r.squared
+
+
+## MSE
+MSE_model1_a <-
+  mean((predict(model1_a, newdata = an.data, type = "response")-an.data$Omni.LLR.int)^2)
+MSE_model2_a <-
+  mean((predict(model2_a, newdata = an.data, type = "response")-an.data$Omni.LLR.int)^2)
+MSE_model3_a <-
+  mean((predict(model3_a, newdata = an.data, type = "response")-an.data$Omni.LLR.int)^2)
+
+# 
+# # Adjusted R squared Table
+# adjus_r2 <-  cbind(ad_r1a.lm, ad_r2a.lm,ad_r3a.lm)
+# colnames(adjus_r2) <- c("Model-4", "MOdel-5", "model-6")
+# knitr::kable(adjus_r2, digits = 3,
+#              caption = "Adjusted R for linear regression model with two variables")
+
+
+# MSE table
+with_int2 <- cbind(MSE_model1_a, MSE_model2_a,MSE_model3_a)
+colnames(with_int2) <- c("Model-4", "MOdel-5", "model-6")
+knitr::kable(with_int2, digits = 3,
+             caption = "MSE for linear regression model with two variables")
+
+
+
+# Interaction with the pairs Linear regression
+model1_b <- lm(Omni.LLR.int~LLR.x+LLR.y+ LLR.y:LLR.x, data = an.data)
+model2_b <- lm(Omni.LLR.int~LLR.y+LLR.z+ LLR.z:LLR.y, data = an.data)
+model3_b <- lm(Omni.LLR.int~LLR.z+LLR.x+ LLR.x:LLR.z, data = an.data)
+
+rsq_1b <- summary(model1_b)$r.squared
+rsq_2b <- summary(model2_b)$r.squared
+rsq_3b <- summary(model3_b)$r.squared
+
+
+MSE_model1_b <-
+  mean((predict(model1_b, newdata = an.data, type = "response")-an.data$Omni.LLR.int)^2)
+
+MSE_model2_b <-
+  mean((predict(model2_b, newdata = an.data, type = "response")-an.data$Omni.LLR.int)^2)
+
+MSE_model3_b <-
+  mean((predict(model3_b, newdata = an.data, type = "response")-an.data$Omni.LLR.int)^2)
+
+
+# # Adjusted R squared
+# adjus_r4 <-  cbind(rsq_1b, rsq_2b,rsq_3b)
+# colnames(adjus_r4) <- c("Model-7", "MOdel-8", "model-9")
+# knitr::kable(adjus_r4, digits = 3,
+#              caption = "Adjusted R for linear regression(interacting) model with two variables")
+
+
+# MSE error
+with_intquad4 <- cbind(MSE_model1_b, MSE_model2_b,MSE_model3_b)
+colnames(with_intquad4) <- c("Model-7", "MOdel-8", "model-9")
+knitr::kable(with_intquad4, digits = 3,
+             caption = "MSE for linear regression(interacting) model with two variables")
+
+
+```
+
+
+# 1.3 Linear model for three variables
+
+```{r,echo=FALSE,warning=FALSE}
+
+model <- lm(Omni.LLR.int~LLR.z+LLR.y+ LLR.x, data = an.data )
+model1_c <- lm(Omni.LLR.int~LLR.x+LLR.y+ LLR.z+ LLR.x*LLR.y*LLR.z, data = an.data)
+
+rsqfor3 <- summary(model)$r.squared
+rsqform1c <- summary(model1_c)$r.squared
+
+
+MSE_model <-
+  mean((predict(model, newdata = an.data, type = "response")-an.data$Omni.LLR.int)^2)
+MSE_model1_c <-
+  mean((predict(model1_c, newdata = an.data, type = "response")-an.data$Omni.LLR.int)^2)
+
+
+
+# # Adjusted R squared
+# adjr_3var <-  cbind(rsqfor3, rsqform1c)
+# colnames(adjr_3var) <- c("Model-10", "MOdel-11")
+# knitr::kable(adjr_3var, digits = 3,
+#              caption = "Adjusted R for linear regression(interacting) model with three variables")
+
+
+# MSE error
+with_intquad4 <- cbind(MSE_model, MSE_model1_c)
+colnames(with_intquad4) <- c("Model-10", "MOdel-11")
+knitr::kable(with_intquad4, digits = 3,
+             caption = "MSE for linear regression(interacting) model with three variables")
+
+
+```
+
+
+# 1.4 Anova for all the linear model
+
+```{r,echo=FALSE,warning=FALSE}
+
+anov <-
+  anova(model1, model2, model3, model1_a,model2_a,model3_a,model1_b,model2_b,model3_b,model,model1_c, test='Chisq')
+anov
+
+```
+
+From the linear regression, The MSE of the model varies from 6.527 being the highest and 3.212 
+being the lowest. The model 11 that interact with all the variable has the least MSE. Likewise,
+from the ANOVA test, model 4, model 7 and model 11 seem to have statistically significant. ANOVA shows that 
+the variable x, y has a linear relationship. each model looking significant has the variable either x and y or the all 3 variables. Hence for linear regression we can say that x and y have linear relationship also we can say that x, y and z have linear relationship. 
+
+We cannot be sure since visually the data looks some what quadratic therefore I would like to fit the quadratic model and varify.
+
+
+# 2. Quadratic model 
+
+## 2.1 Quadratic model for single variable
+
+```{r,echo=FALSE,warning=FALSE}
+
+# quadratic model
+
+
+# Now quadratic model for this first model
+new.data <- subset(an.data, select= c(Omni.LLR.int,LLR.x, LLR.y,LLR.z))
+new.data$llrx2 <- new.data$LLR.x^2
+new.data$llry2 <- new.data$LLR.y^2
+new.data$llrz2 <- new.data$LLR.z^2
+
+# quadratic Regression
+qmod1 <- lm(Omni.LLR.int~LLR.x + llrx2, data=new.data)
+qmod2 <- lm(Omni.LLR.int~LLR.y + llry2, data=new.data)
+qmod3 <- lm(Omni.LLR.int~LLR.z + llrz2, data=new.data)
+
+
+# Adjusted R
+ad_r1 <- summary(qmod1)$r.squared
+ad_r2 <- summary(qmod2)$r.squared
+ad_r3 <- summary(qmod3)$r.squared
+
+
+
+# MSE
+MSE_qmod1 <-
+  mean((predict(qmod1, newdata = new.data, type = "response")-new.data$Omni.LLR.int)^2)
+MSE_qmod2 <-
+  mean((predict(qmod2, newdata = new.data, type = "response")-new.data$Omni.LLR.int)^2)
+MSE_qmod3 <-
+  mean((predict(qmod3, newdata = new.data, type = "response")-new.data$Omni.LLR.int)^2)
+
+
+# # Adjusted R squared
+# adjus_r1 <-  cbind(ad_r1, ad_r2,ad_r3)
+# colnames(adjus_r1) <- c("Model-1Rsq", "Model-2rsq", "model-3rsq")
+# knitr::kable(adjus_r1, digits = 3,
+#              caption = "Adjusted R for quadratic regression model with single variable")
+
+
+# MSE error
+no_intquad <- cbind(MSE_qmod1, MSE_qmod2,MSE_qmod3)
+colnames(no_intquad) <- c("qModel-1", "qMOdel-2", "qmodel-3")
+knitr::kable(no_int, digits = 3,
+             caption = "MSE for quadratic regression model with single variable")
+
+```
+
+## 2.2 Quadratic model for two variables
+
+```{r,echo=FALSE,warning=FALSE}
+
+# Quadratic model 
+
+qmod4 <- lm(Omni.LLR.int~LLR.x +LLR.y +llry2 + LLR.x:(LLR.y+llry2), data=new.data)
+qmod5 <- lm(Omni.LLR.int~LLR.y +LLR.z+llrz2 + LLR.y:(LLR.z+llrz2), data=new.data)
+qmod6 <- lm(Omni.LLR.int~LLR.z +LLR.x+llrx2 + LLR.z:(LLR.x+llrx2), data=new.data)
+
+rsq_qu4 <- summary(qmod4)$r.squared
+rsq_qu5 <- summary(qmod5)$r.squared
+rsq_qu6 <- summary(qmod6)$r.squared
+
+MSE_qmod4 <-
+  mean((predict(qmod4, newdata = new.data, type = "response")-new.data$Omni.LLR.int)^2)
+MSE_qmod5 <-
+  mean((predict(qmod5, newdata = new.data, type = "response")-new.data$Omni.LLR.int)^2)
+MSE_qmod6 <-
+  mean((predict(qmod6, newdata = new.data, type = "response")-new.data$Omni.LLR.int)^2)
+
+
+# # Adjusted R squared
+# adjus_r2 <-  cbind(rsq_qu4, rsq_qu5,rsq_qu6)
+# colnames(adjus_r2) <- c("Model-4", "MOdel-5", "model-6")
+# knitr::kable(adjus_r2, digits = 3,
+#              caption = "Adjusted R for quadratic regression model with two variables")
+
+
+# MSE error
+with_intquad3 <- cbind(MSE_qmod4, MSE_qmod5,MSE_qmod6)
+colnames(with_intquad3) <- c("Model-4", "MOdel-5", "model-6")
+knitr::kable(with_intquad3, digits = 3,
+             caption = "MSE for quadratic regression model with two variables")
+
+```
+
+
+# 2.3 Quadratic model for three variables
+
+```{r,echo=FALSE,warning=FALSE}
+
+qmod7 <-lm(Omni.LLR.int~LLR.x+ LLR.y+LLR.z+ LLR.x:(LLR.y+llry2)+ LLR.x:(LLR.z+ llrz2), data = new.data)
+paste0("R squared quadratic model for model 7 is : ", summary(qmod7)$r.squared)
+
+# qmod8 <- lm(Omni.LLR.int~LLR.x+ LLR.y+LLR.z+llrx2+llry2+llrz2+ LLR.x*LLR.y + LLR.y*LLR.z+ LLR.z*LLR.x+LLR.x*LLR.y*LLR.z, data = new.data)
+# summary(qmod8)r.squared)
+
+
+MSE_qmod7 <-
+  mean((predict(qmod7, newdata = new.data, type = "response")-new.data$Omni.LLR.int)^2)
+paste0("MSE of quadratic model for model 7is : ", MSE_qmod7)
+
+# MSE_qmod8 <-
+#   mean((predict(qmod8, newdata = new.data, type = # "response")-new.data$Omni.LLR.int)^2)
+# MSE_qmod8
+
+```
+
+## 2.4 Anova for quadratic models
+
+```{r,echo=FALSE,warning=FALSE}
+q_anov <-
+  anova(qmod1, qmod2,qmod3,qmod4,qmod5,qmod6,qmod7, test='Chisq')
+q_anov
+
+```
+
+Since, the same process is repeated in the quadratic model. MSE of the models is viewed. The
+MSE of the models varies from 7.36 being maximum and 2.3 being the minimum model-6 that has
+the x and y interacting with the other models shows the least MSE. The ANOVA analysis shows 
+only one model as significant. We did not get any values for the other models. That may be 
+because of the values that are too small to calculate. However, model 6 appears to be significant.
+
+Again, I would like to compare the MSE for both linear and quadratic models. Since the MSE for the
+linear regression that I assumed better fit has the value of 3.212 and the better fit for the 
+quadratic model is 2.3 therefore because of the least MSE, the quadratic model has the better 
+fit with the interaction between x and y. The model that we find to have the better is `Omni.LLR.int
+~ LLR.x + LLR.y + llry2 + LLR.x:(LLR.y + llry2) `  Therefore LLR.x and LLR.y interaction with x has 
+the better fit and has the quadratic relationship.
+
+Hence, from the linear and the quadratic model, it apperas that x and y have linear realationship.The same thing can be proved for the quadratic model, however the quadratic model is the better fit. Therefore,
+from my analysis, I find out that the x and y has a quadratic relation.
+
+
+```{r,echo=FALSE,warning=FALSE}
+# plot(qmod6)
+
+```
+
+
