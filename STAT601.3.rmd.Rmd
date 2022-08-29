@@ -1,0 +1,369 @@
+---
+title: "Analysis of Bladder Cancer from HSAUR3"
+author: "Yamuna Dhungana"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F,warning=F,echo=F,fig_height=10,fig_width=7,cache = F)
+```
+
+
+1. (Ex. 7.3 pg 147 in HSAUR, modified for clarity) Use the \textbf{bladdercancer} data from the \textbf{HSAUR3} library to answer the following questions.
+
+a) Construct graphical and/or numerical summaries to identify a relationship between tumor size and the number of recurrent tumors. Discuss your discovery. (For example, a mosaic plot or contingency table is a good starting point. Otherwise,  there are other ways to explore this data.)
+
+```{r, warning=FALSE}
+require(knitr)
+data("bladdercancer", package = "HSAUR3")
+
+# To find the relation between the varibales
+# Graphical summary
+# creating the contigency Table
+rel_for <- xtabs(~ number + tumorsize, data = bladdercancer)
+
+# Creating the plot using Mosaic plot
+mosaicplot(rel_for, main="base R: The Number of recurrent tumors compared with tumor size",
+           shade = TRUE)
+
+# library(ggplot2)
+library(ggmosaic)
+ggplot(data = bladdercancer) +
+  geom_mosaic(aes(x = product(tumorsize, number), fill=tumorsize),
+              na.rm=FALSE) +labs(x="Number", x="Tumour Size", 
+            title='ggplot: The Number of recurrent tumors compared with tumor size')
+
+#for numerical summary
+#summary(bladdercancer)
+```
+
+From the graphical summary, we find out that the relationship between the tumor size of the bladder cancer and the number of recurrent tumors. The graph shows that the number of less than or equal to three is more than the number of tumors greater than three. The number of tumor 1 is more comparatively. Like-wise the number of three and four tumors is less than one and two.
+
+
+
+b) Assume a Poisson model describes the relationship found in part a). Build a Poisson regression that estimates the effect of tumor size on the number of recurrent tumors.  Does the result of this analysis
+support your discovery in part a)?
+
+```{r}
+my_reg  <- glm(number ~ tumorsize, data = bladdercancer, family = poisson)
+summary(my_reg)
+```
+
+
+When we exclude the time variable from our model, the intercept adds significance. Whereas, tumor size does not add significance to our model. The value of the AIC of the model is 87.191. Dataset bladder cancer is slightly positively skewed. The median of the model is close to zero therefore we can say that the model is not biased in one direction.
+
+
+     
+```{r}
+my_reg_A  <- glm(number ~ tumorsize+ time, data = bladdercancer,
+                 family = poisson)
+summary(my_reg_A)
+
+```
+
+
+When we see the relationship between the number of tumors, tumor size, and the time we find out that the model is insignificant. We also can see AIC is 88.568 which is greater than the previous model.
+
+
+    
+```{r}
+my_reg_B  <- glm(number ~ tumorsize+ time + time *tumorsize, data = bladdercancer,
+                 family = poisson)
+summary(my_reg_B)
+
+```
+
+
+When we see the interaction between the number of tumors, tumor size, and the time we find out that the model is insignificant. We also can see AIC is  90.377 which is greater than the previous models. Therefore, I find the first model, which is Poisson regression with a number and the tumor size more relatable with the first part of the question.
+
+
+
+2. Let $y$ denote the number of new AIDS cases in Belgium between the years 1981-1993. 
+Let $t$ denote time.
+\begin{verbatim}
+y = c(12, 14, 33, 50, 67, 74, 123, 141, 165, 204, 253, 246, 240)
+t = c(1:13)
+\end{verbatim}
+
+a) Plot the progression of AIDS cases over time. Describe the general nature of the progress of 
+the disease.
+
+```{r}
+y = c(12, 14, 33, 50, 67, 74, 123, 141, 165, 204, 253, 246, 240)
+t = c(1:13)
+my_df <- data.frame(y, t)
+
+# Plot in base R
+plot(my_df$y ~ my_df$t, main = "Base R: Plot of progression of cases over time",
+     xlab = "Time", ylab = "cases", type = "b",pch = 20, col= "Red")
+
+# Plot with ggplot
+library(ggplot2)
+ggplot(my_df, aes(t,y))+ geom_line(color= "Red")+ geom_point(color= "Red")+
+labs(title = "ggplot:Plot of progression of cases over time", x= "Time", y= "Cases")+
+    theme_classic()
+
+```
+
+
+
+The above graphs show the relationship between the time and the progression of the AID cases in Belgium. In the first year, the number of cases was relatively stable. The graphs show a similar steep between 1982 to 1985 and 1987 and 1991. There is an increase in the number of cases. From 1986 to 1987, the cases of AIDS  increased, which is approximately 75 to 175 cases. The last year that is 1991 to 1993, the cases began to decrease from the peak. The highest number of cases seen in the 13 years was 250.
+     
+
+
+b) Fit a Poisson regression model $log(\mu_i)=\beta_0+\beta_1t_i$. How well do the model 
+parameters describe disease progression? Use a residuals (deviance) vs Fitted plot to determine
+how well the model fits the data.
+
+```{r}
+model1 <- glm(y~t,data = my_df, family = poisson)
+summary(model1)
+plot(model1, which=1, main = "base R:residuals (deviance) vs Fitted")
+
+modf <- fortify(model1)
+ggplot(modf, aes(x=.fitted, y= .resid))+ geom_point(color= "red")+
+    geom_smooth()+ labs(title = "ggplot:Plot of residuals(deviance Vs Fitted",
+                        x= "Residuals", y= "Fitted Value")+ theme_classic()
+
+exp(coef(model1))
+exp(confint(model1))
+    
+```
+
+ Both (b0) and (b1)  are statistically significant from zero. The residual and predicted plot is normally distributed which says that our assumption is correct. We also can find out the one outliers.
+   
+   
+
+
+c) Now add a quadratic term in time (\textit{ i.e., $log(\mu_i)=\beta_0+\beta_1t_i +\beta_2t_i^2$} )
+and fit the model. Do the parameters describe the progression of the disease? Does this improve the
+model fit? Compare the residual plot to part b). 
+
+```{r}
+# For the quadratic model 
+my_df$t2 <- t^2
+model2 <- glm(y~t+t2, data = my_df, family = poisson)
+summary(model2)
+
+plot(model2, which=1, main = "base R:residuals (deviance) vs Fitted for quardataic term")
+
+modf2 <- fortify(model2)
+ggplot(modf2, aes(x=.fitted, y= .resid))+ geom_point(color= "red")+geom_smooth()+ 
+    labs(title = "ggplot:Plot of residuals(deviance Vs Fitted for quardatic term", 
+         x= "Residuals", y= "Fitted Value")+ theme_classic()
+
+
+# COefficients
+exp(coef(model2))
+exp(confint(model2))
+
+```
+
+
+The model proves that all the variables are statistically significant.The progression of AIDS cases decreased when we performed the quadratic model.
+     
+
+
+d) Compare the two models using AIC. Did the second model improve upon the first?
+Does this confirm your position from part c)? 
+
+```{r}
+cat("AIC for the model-1")
+AIC(model1)
+cat("AIC for the model-2 ")
+AIC(model2)
+```
+
+
+The model is always better if the value of AIC is less. Since the value of AIC is less for model-2 than model-1. Therefore, model-2 is better. Yes,the model improved from the first.
+ 
+    
+
+e)  Compare the two models using a $\chi^2$ test (\texttt{anova} function will do this). 
+Did the second model improve upon the first? Does this confirm your position from part c) and/or d)? 
+
+```{r}
+anova(model1,model2, test="Chisq")
+```
+
+
+The p value of the model 2 is less than 0.05 which is statistically significant. Therefore model-1 improves by adding the quadratic term.
+    
+    
+
+3. (Adapted from ISLR) Load the \textbf{Default} dataset from \textbf{ISLR} library. The dataset
+contains four features on 10,000 customers. We want to predict which customers will default on their
+credit card debt based on the observed features. You had developed a logistic regression model on 
+HW \#2. Now consider the following two models 
+    \begin{itemize}
+    \item[Model 1:] Default = Student + balance 
+    \item[Model 2:] Default = Balance 
+    \end{itemize}
+Compare the models using the following four model selection criteria.
+
+a) AIC
+
+```{r}
+data(Default, package = "ISLR")
+Default$default<-as.numeric(Default$default=="Yes")
+
+firstmod <- glm(default~ student + balance, data = Default, family = binomial())
+# summary(firstmod)
+secondmod <- glm(default~ balance , data = Default, family = binomial())
+#summary(secondmod)
+
+cat("AIC of the first model is ")
+AIC(firstmod)
+
+cat("AIC of second model is ")
+AIC(secondmod)
+
+
+# extractAIC(firstmod)
+anova(firstmod, secondmod, test="Chisq")
+
+AIC.dat <- rbind( AIC(firstmod), AIC(secondmod))
+colnames(AIC.dat) <- ("AICs")
+```
+
+
+The AIC of the first model is smaller than the second model. Therefore the model-1 is better.
+
+
+
+b) Training / Validation set approach. Be aware that we have few people who defaulted in the data. 
+
+```{r}
+# dim(Default) # view the dimension of the data
+
+set.seed(1)
+ # using the value row as the value of n
+n = nrow(Default)
+# splitting the samples in the ratio of 70:30 
+index = sample(1:n, size = n*0.70, replace = FALSE)  
+# length(index)
+
+
+# splitting the given data into the train and the validation dataset
+train.set = Default[index,]
+val.set = Default[-index,]
+# dim(train.set)
+# dim(val.set)
+
+# predicting the values for first model
+default.pred1 = predict(firstmod, val.set, type = "response")
+# predicting the values for model 2
+default.pred2 = predict(secondmod, val.set, type = "response") 
+
+
+# Checking the error rate of the model 1
+cat("mean square error for first model")
+val.MSE1 = mean((val.set$default - default.pred1)^2)  
+val.MSE1
+# checking the error rate of second model 
+cat("mean square error for second model")
+val.MSE2 = mean((val.set$default - default.pred2)^2)  
+val.MSE2
+
+# Referance : https://rpubs.com/maulikpatel/226229
+
+
+MSE.dat <- rbind(mean((val.set$default - default.pred1)^2),
+                 mean((val.set$default - default.pred2)^2))
+colnames(MSE.dat) <- ("T/v set approach")
+```
+
+
+I split the data into a 70:30 ratio, as the test and the training data. The mean squared error for model-1 is 0.0215. Likewise, the mean squared error for the model-2 is 0.0217. Based on the MSE, we can choose model-1.
+    
+
+c) LOOCV
+
+```{r}
+library(boot)
+cost <- function(r, pi = 0) mean(abs(r-pi) > 0.5)
+LOOCV1 <- cv.glm(Default,firstmod, cost)$delta[1];LOOCV1
+LOOCV2 <- cv.glm(Default,secondmod, cost)$delta[1];LOOCV2
+
+cat(" LOOCV for the first model")
+LOOCV1
+
+cat("LOOCV for the second model")
+LOOCV2
+
+LOOCV.dat <- rbind(LOOCV1,LOOCV2)
+colnames(LOOCV.dat) <- ("LOOCV")
+```
+
+LOOCV error is adjusted for bias and we still want the smallest prediction errors.From the model-1 the LOOCV is 0.02267 and the LOOCV for model-2 is 0.0275. Therefor model-2  is better.
+
+
+
+d) 10-fold cross-validation.
+
+```{r}
+cat("10-fold cross-calidationmodel-1")
+kfold1 <- cv.glm(Default,firstmod, cost, K=10)$delta[1];kfold1
+
+cat("10-fold cross-calidation for model-2")
+kfold2 <- cv.glm(Default, secondmod,cost, K=10)$delta[1];kfold2
+
+
+kfold.dat <- rbind(kfold1,kfold2)
+colnames(kfold.dat) <- ("K-fold")
+```
+
+Using K=10 for the 10-fold cross-validation approach, for model 1, the CV error rate is 0.0266 and for model 2 is 0.0275, From most of the model we find out that the model-1 is better.
+
+
+
+Report validation misclassification (error) rate for both models in each of the four methods (we recommend using a table to organize your results). Select your preferred method, justify your choice, and describe the model you selected. 
+
+```{r}
+final.data <- cbind(AIC.dat,MSE.dat,LOOCV.dat,kfold.dat)
+row.names(final.data) <- c("Model-1", "Model-2")
+knitr::kable(final.data, digits = 2, caption = "A table for errors.")
+
+```
+
+4. Load the \textbf{Smarket} dataset in the \textbf{ISLR} library. This contains Daily Percentage Returns for the S\&P 500 stock index between 2001 and 2005. There are 1250 observations and 9 variables. The variable of interest is Direction. Direction is a factor with levels Down and Up, indicating whether the market had a negative or positive return on a given day.
+
+Develop two competing logistic regression models (on any subset of the 8 variables) to predict the direction of the stock market. Use data from years 2001 - 2004 as training data and validate the models on the year 2005. Use your preferred method from Question \#3 to select the best model. Justify your selection and summarize the model.
+
+```{r}
+data("Smarket", package = "ISLR")
+Smarket$Direction<-as.numeric(Smarket$Direction=="Up")
+
+train<-subset(Smarket, Year <= 2004)
+test<-subset(Smarket, Year > 2004)
+
+# here is the two model that I chose to develop
+Mode1 = glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = train, family=binomial())
+Mode2 = glm(Direction ~ Lag1 + Lag2 + Lag1 * Lag3 + Lag1 * Lag5 + Lag3 * Lag4 + Lag3 * Lag5, data = train, family=binomial())
+
+anova(Mode1, Mode2, test='Chisq')
+
+
+# Calculating the error of the model
+MSE1 <- mean((predict(Mode1,test,type='response')-test$Direction)^2)
+MSE1
+MSE2 <- mean((predict(Mode2,test,type='response')-test$Direction)^2)
+MSE2
+
+  
+
+# 10 fold cross validation method
+cost <- function(r, pi = 0) mean(abs(r-pi) > 0.5)
+cat("10-fold cross-validationmodel-1")
+kfold_a <- cv.glm(train, Mode1, cost, K=10)$delta[1];kfold_a
+
+cat("10-fold cross-validation for model-2")
+kfold2 <- cv.glm(train, Mode2, cost, K=10)$delta[1];kfold2
+``` 
+
+Here, I have two models. We find out that both the model is not statistically significant. We considered statistically significant. If the value of p is less than or equal to 0.05. Here the model-2 has the p-Value of 0.06, which is statistically insignificant. The error of the model-1 is through mean squared error is 0.25, and model-2 is 0.24. Likewise, the error of 10-fold cross-validation for model-1 is 0.51 and model-2 us 0.48.
+
+
+
+
+
