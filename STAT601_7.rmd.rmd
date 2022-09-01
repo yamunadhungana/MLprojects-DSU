@@ -1,0 +1,285 @@
+---
+title: "Survival Analysis From HSAUR"
+author: "Yamuna Dhungana"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F,warning=F,echo=F,fig_height=10,fig_width=7,cache = F)
+```
+
+
+## Exercises
+
+1. (Question 11.2 on pg. 224 in HSAUR, modified for clarify) A healthcare group has asked you to analyze the **mastectomy** data from the **HSAUR3** package, which is the survival times (in months) after a mastectomy of women with breast cancer. The cancers are classified as having metastasized or not based on a histochemical marker. The healthcare group requests that your report should not be longer than one page, and must only consist of one plot, one table, and one paragraph. Make sure to keep track of the assumptions that go into a Kaplan-Meier test. Be explicit about what you are actually testing (hint: What types of censoring allows you to still do a valid test?)
+
+```{r, warning=FALSE}
+require(knitr)
+library(survival)
+library("survminer")
+library(mclust)
+library(ISwR)
+library(ggplot2)
+library(ggfortify)
+data(mastectomy, package = "HSAUR3")
+bcancer_data <- mastectomy
+# names(bcancer_data)
+
+```
+
+a. Plot the survivor functions of each group only using ggplot, estimated using the Kaplan-Meier estimate.
+
+```{r, warning=FALSE}
+fit <- survfit(Surv(time, event)~ metastasized, data = bcancer_data)
+print(fit)
+summary(fit)
+
+# # Plot using base R 
+# plot(fit, lty = c("solid", "dashed"), col = c("black", "grey"), xlab = "Survival Time In months", ylab = "Survival Probabilities", main = "Base R: Survival Chance of women with Breast Cancer")
+# legend("topright", c("Metastasized_No", "Metastasized_Yes"), lty = c("solid", "dashed"), col = c("black", "grey"))
+
+
+# plot with ggplot
+require("survminer")
+ggsurvplot(fit, data =  bcancer_data) +
+  labs (x = "Time (months)", title = "ggplot: Survival Chance of women with Breast Cancer")
+
+
+# Refereance: 
+# https://rpkgs.datanovia.com/survminer/
+# https://dk81.github.io/dkmathstats_site/rvisual-kaplan-meier.html
+```
+    
+    
+    
+The above plot is the survival plot of the women whose cancer has spread to the other organs and whose cancer has not spread. In the plot, named Survival chance of women with whose cancer has spread in a whole body. The green line denotes the probability of women who have undergone metastasis. The red line is the probability of women who have not undergone metastasis. The X-axis is the survival time in months, and Y-axis is the probability of survival. The plot shows that survival without metastasized (Redline) has a higher probability of surviving. Likewise, the surviving chances of the patient with metastasized (green line) are lower. The plot also shows the probability of surviving is higher than 0.5 for all the patients who are not metastasized. Whereas, for the metastasized patient, the probability of survival drops down to 0.5 from 50 months. In the period of 60 months to 150 months, the survival of women with metastasized drops to 0.25. Whereas, for the patient without metastasized reveals that survival probability is constant from 60 to 150 and drops to 0.65 at 150 months. Hence from the graph, I can say that patient without metastasized has a comparatively lower risk of death than that with metastasized.
+
+
+
+b. Use a log-rank test (using `logrank_test()`) to compare the survival experience of each group more formally. Only present a formal table of your results. 
+
+```{r, warning=FALSE}
+log_test <- survdiff(Surv(time, event==1)~metastasized, data = bcancer_data, rho=0)
+cox_reg <- coxph(formula=Surv(time,event)~metastasized,data=bcancer_data)
+cat("Log rank test")
+print(log_test)
+cat("cox regression")
+print(cox_reg)
+
+
+library(coin)
+log <- logrank_test(Surv(time, event) ~ metastasized,
+             data = mastectomy)
+
+# for table 
+
+logrank.t <- log@distribution@pvalue(log@statistic@teststatistic)
+p.val <- 1 - pchisq(log_test$chisq, length(log_test$n) - 1)
+p.cox <- summary(cox_reg)$coefficients[5]
+
+
+final.data <- cbind(logrank.t, p.val, p.cox)
+colnames(final.data) <- c("Logrank_test", "survdiff", "coxph")
+knitr::kable(final.data, digits = 3, caption = "P values using different functions")
+
+
+# Referance 
+# https://stat.ethz.ch/pipermail/r-help/2007-April/130676.html
+# https://community.rstudio.com/t/extract-p-value-from-coxph/57537
+
+```
+     
+     
+     
+ I used the Log-rank test from the coin library and survfiff for comparing whether the data is statistically significant. I also used cox regression. From the survdiff and log-rank test, I got the p-value 0.08 and 0.06. which is not statistically significant at p < 0.05. Whereas, from the cox-regression and I got the p-value 0.089 which is also not significant at 0.05.
+     
+
+c. Write one paragraph summarizing your findings and conclusions.
+
+
+The pattern of the survival plot assumed that having metastasis is the main factor for a decreased survival chance of women with breast cancer. We also saw the plot supporting the same. However, we performed the log-rank test for the two groups and ended up getting a  p-value that is not statistically significant. We saw that the Redline was higher than the green line in our plot. But, according to the log-rank test and the p-value we accept the Null Hypothesis. Cox regression was also performed, which gave a p-value (0.06). So, with a 5% risk level, the difference between the two groups is not statistically significant and hence, the surviving chance of women with breast cancer is not significantly affected by the fact whether the cancer was metastasized or not.But if we take a higher risk level, suppose of 10%, our conclusion is different (since 0.08<0.1). With a 90% confidence level, we can conclude that the surviving chance of women with breast cancer is significantly affected by whether women have cancer was metastasized or not. If  cancer spreads to the other organ, the surviving chance significantly decreases. 2. An investigator collected data on survival of patients with lung cancer at Mayo Clinic. Use the **cancer** data located in the **survival** package. Write up in a narrative style appropriate for the statistical methods section of a research paper/technical report, making sure to address the following points of interest. Use a writing style appropriate for your field of work. Submissions that are not a formal write-up will receive zero credit for this portion of the assignment.
+
+
+a. What is the probability that someone will survive past 300 days?
+
+```{r,warning=FALSE}
+data(cancer, package = "survival")
+#head(cancer)
+#names(cancer)
+
+surv300 <- survfit(formula=Surv(time, status==2)~1, data = cancer)
+summary(surv300, time = 300)
+
+
+cat("Probability of someone surviving past 300 days")
+ summary(surv300, time = 300)[6]
+
+
+```
+   
+The probability of survival is 0.5306
+
+b. Provide a graph, including 95% confidence limits, of the Kaplan-Meier estimate of the entire study.
+
+```{r, warning=FALSE}
+
+# From summary We got surv= 300 and probability = 0.531
+
+plot(surv300, col="blue",main="base R: Survival Chance based on Kaplan-Meier Estimate", xlab="Survival Time in Days",ylab="Probability of Survival")
+abline(v=300,h=0.531,col="red")
+
+
+p<- ggsurvplot(surv300, data = cancer) +
+  labs (x = "Survival Time in Days", title = "ggplot: Survival Chance based on Kaplan-Meier Estimate") 
+p$plot + geom_hline(yintercept=0.531, color='red') + geom_vline(xintercept = 300, color='red')
+
+
+# referance:
+# http://www.sthda.com/english/wiki/survival-analysis-basics
+
+```
+
+
+c. Is there a difference in the survival rates between males and females? Make sure to provide a formal statistical test with a p-value and visual evidence.
+
+```{r, warning=FALSE}
+attach(cancer)
+# 	Male=1 Female=2
+## Base: R plot
+
+male.fit <- survfit(formula=Surv(time,status==2)~1)
+female.fit <- survfit(formula=Surv(time,status==2)~1)                  
+ 
+ layout(matrix(1:2, ncol = 1))
+ male.df <- subset(cancer, sex==1)
+ plot(survfit(formula=Surv(time,status==2)~1, data=male.df), col="Red",main="Survival Chance by Gender (Male)", xlab="Survival Time (days)", ylab="Surviving Probability")
+ female.df <- subset(cancer, sex==2)
+ plot(survfit(formula=Surv(time,status==2)~1, data=female.df),col="Green",main="Survival Chance by Gender (Female)", xlab="Survival Time (days)",ylab="Surviving Probability")
+
+
+ggsurvplot(survfit(Surv(time,status==2)~sex, data=cancer),pval = TRUE, conf.int = TRUE, legend='right',legend.labs = c('Male','Female'),
+          risk.table.col = "strata", # Change risk table color by groups
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF"))+
+        labs (x = "Survival Time (days)", title = "ggplot: Survival Chance based on Kaplan-Meier Estimate")
+
+
+ # # ggplot
+ # fit <- list(male.fit, female.fit)
+ # autoplot(fit, surv.linetype = 'dashed', conf.int = TRUE,
+ #          censor.shape = '*', censor.size = 5, facets = FALSE, ncol = 2,label = TRUE)
+ 
+# # Base: R Plot
+# plot(survfit(Surv(time,status==2)~sex, data=cancer),
+#      main="Males and Females Survival",lty=c(1,2),col=c("black","red"),
+#      ylab="Survival Probability",xlab="Survival Time (days)")
+# legend("topright",c("Males","Females"),lty=c(1,1),
+#        lwd=c(2,2),col=c("black","red"))
+
+
+print(survdiff(formula=Surv(time,status==2)~sex,data=cancer))
+
+```
+
+
+d. Is there a difference in the survival rates for the older half of the group versus the younger half?  Make sure to provide a formal statistical test with a p-value and visual evidence.
+
+```{r}
+c.data <- cancer
+c.data$Age_Group <- 2
+get.median <- median(cancer$age)
+
+for(i in 1:nrow(cancer)){
+  if(cancer[i,4] <= get.median){
+    c.data[i,11]=1}
+}
+
+young <- subset(c.data, Age_Group==1)
+old <- subset(c.data, Age_Group==2)
+
+
+young_surv <- survfit(formula=Surv(time,status==2)~1, data=young)
+old_surv <- survfit(formula=Surv(time,status==2)~1, data=old)
+
+
+# plot(young_surv,col="black",main="Survival Probability Plot",
+#      xlab="Survival (days)",ylab="Surviving Probability")
+# lines(old_surv, col="red")
+# legend(800, 0.8, legend=c("Yound", "Old"),
+#        col=c("black", "red"), lty=c(1,1), cex=0.8)
+
+# Base R
+plot(survfit(Surv(time,status==2)~Age_Group, data = c.data),
+     main="Survivability between young and old",lty=c(1,2),col=c("black","red"),
+     ylab="Survival Probability",xlab="Survival (days)")
+legend("topright",c("Young","Old"),lty=c(1,1),
+       lwd=c(2,2),col=c("black","red"))
+
+# ggplot
+survplot  <- list()
+survplot[[1]] <- ggsurvplot(young_surv, data=young, pval=TRUE, conf.int = TRUE) +
+    labs(title='Kaplan-Meier estimate\n for Young',x = "Survival Time (days)")
+survplot[[2]] <- ggsurvplot(old_surv, data= old, pval=TRUE,conf.int = TRUE) +
+    labs(title='Kaplan-Meier estimate \n for old',x = "Survival Time (days)")
+arrange_ggsurvplots(survplot, print = TRUE,
+  ncol = 2, nrow = 1)
+
+
+# ggplot
+# yg.fit <- list(young_surv,old_surv)
+# autoplot(yg.fit, surv.linetype = 'dashed', conf.int = TRUE,
+#          censor.shape = '*', censor.size = 5, facets = FALSE,
+#          col = "Red", ncol = 2,label = TRUE)
+
+
+print(survdiff(formula=Surv(time,status==2)~Age_Group,data = c.data))
+
+```
+
+
+ `Survival of the people with lung cancer, according to age, sex, and past 300 days.`
+
+Data collected from a patient with lung cancer at the Mayo Clinic used for analysis. The
+survival analysis of the people with lung cancer, according to the age group (young and 
+old), and sex, and the past 300 days is determined.  To test the survival of the patient,
+I performed survival analysis. The survival analysis shows gender has a significant 
+influence on the survival of the patient with lung cancer. However, the age group has
+no significance in a patient with lung cancer. In addition to this, I also performed 
+the probability of surviving the past 300 days with the same analysis.
+The dataset has ten variables, and we had used only four. Time represents the survival
+time of the patient in days. Likewise, the status of the patient—1 as censored, and 2 
+as dead. The parameter sex, where 1 is male, and 2 is female. Dataset was used from the
+package Survival named cancer.
+
+Firstly, the survival model was fitted (survfit(surv..)) with status 2 means dead. Function
+survfit gives the probability of 0.5306 and about 53.1%. I have provided the horizontal and
+vertical lines indicating the probability for the past 300 days. Visual evidence of survival
+with the confidence of 95%. The plot shows as time increases survival probability also 
+decreases and becomes uncertain past 750 days.
+
+Secondly, for determining if sex has a significant influence on the survival of the patient,
+we divided the data according to the sex. For visual evidence, we have the plot. The plot shows,
+males and females have different survival probability and were determined using Kaplan- Meier 
+estimator.The blue line determines the female’s survival probability over time, and the yellow 
+line determines the survival probability of males over time. In females, the survival for a couple
+of months, in the beginning, is constant and is high. And the survival probability past 750 days is
+very low and uncertain. Compared to males, survival is high. Likewise, in males, the plot shows the
+steep without steps, which shows that the risk of male surviving compared to female is low and are 
+at higher risk. Additionally, Log-rank also indicates a significant difference between the two 
+groups. The P-value of 0.001 means that the null hypothesis (There is no difference in male and 
+female) rejected with 95% confidence.
+
+Similarly, by the age group (young and old), a comparison is made. The median-age was determined 
+(by code), and two sub-datasets found Young and old.  One means young and two as old. With the 
+Kaplan-Meier estimator, the plot is obtained. The plot, “Survivability between young and old”, 
+is the survival of young and old aged patients, black representing young and red representing old.
+According to the plot, the survivability of the young is higher than the old. However, based on the
+log-rank, the difference is not statistically significant because of a p-value 0.2. and 0.2 is much 
+higher than 0.05. So, with the 95% confidence interval, we accept the null hypothesis, and we conclude
+that the age group has no significant difference in survivability.  Both age groups are at the same risk.
+
+ Hence, from my analysis, the survival of the patient with lung cancer has a significant influence on sex 
+ but not by the age group.
+
+
+
