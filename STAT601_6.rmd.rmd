@@ -1,0 +1,252 @@
+---
+title: "Analysing Longitudinal Data from HSAUR"
+author: "Yamuna Dhungana"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F,warning=F,echo=F,fig_height=10,fig_width=7,cache = F)
+```
+
+
+## Exercises
+
+Installing the required libraries.
+```{r}
+library("HSAUR3")
+library("mgcv")
+library("GGally")
+library("mboost")
+library("rpart")
+library("wordcloud")
+library(tinytex)
+```
+
+1. (Ex. 10.1 pg 207 in HSAUR, modified for clarity) Consider the **bodyfat** data from the **TH.data** package introduced in Chapter 9.  
+
+a) Use graphical methods to suggest which variables should in the model to predict body fat. (Hint: Are there correlated predictors?) Make sure to explain your reasoning.
+    
+    
+```{r, warning=FALSE}
+data("bodyfat", package = "TH.data")
+plot(bodyfat)
+# cor(bodyfat)
+
+# by ggally
+colum = 1:ncol(bodyfat)
+ggpairs(bodyfat, columns =colum , title = "corelation for the bodyfat",  
+  axisLabels = "show", columnLabels = colnames(bodyfat[, colum]))
+
+
+
+# Referance: http://www.sthda.com/english/wiki/ggally-r-package-extension-to-ggplot2-for-correlation-matrix-and-survival-plots-r-software-and-data-visualization
+
+```
+
+
+As we know, when the value of correlation is equal to 1, variables are highly correlated. The relation becomes weak when the value of correlation begins to decrease. From the normal plot function, we can say that there is some relationship between the variables, besides age and the elbow width.When using the gaally package, we can view the relationship between the variables with its correlation values. The correlation value shows that age and the elbowbreadth are not correlated with any of the other variables because the values of correlation are comparatively less. The graph shows some relation between them as well. The DEXfat correlation values are nearly equal to 1, and these values say that the variable is highly correlated. Hence, we can use it as a variable to predict the model. Besides DEXfat, hipcirc and waistcirc also can be used as the alternative predictor as well because of their higher correlation values.
+       
+       
+
+    
+ b) For feasability of the class, fit a generalised additive model assuming normal errors using the following code. 
+
+       \begin{verbatim}
+         bodyfat_gam <- gam(DEXfat ~ s(age) + s(waistcirc) + s(hipcirc) + 
+                  s(elbowbreadth) + s(kneebreadth)+ s(anthro3a) +
+                  s(anthro3c), data = bodyfat)
+       \end{verbatim}
+      
+- Assess the **summary()** and **plot()** of the model (don't need GGPLOT for a plot of the model). Are all covariates informative? Should all covariates be smoothed or should some be included as a linear effect? 
+        
+- Report GCV, AIC, and total model degrees of freedom. Discuss how certain you are that you have a reasonable summary of the actual model flexibility.
+        
+- Produce a diagnostic plot using **gam.check()** function. Are any concerns raised by the diagnostic plot?
+        
+- Write a discussion on all of the above points.
+        
+```{r, warning=FALSE}
+bodyfat_gam <- gam(DEXfat ~ s(age) + s(waistcirc) + s(hipcirc) + 
+                  s(elbowbreadth) + s(kneebreadth)+ s(anthro3a) +
+                  s(anthro3c), data = bodyfat)
+
+# Summary of the model
+summary(bodyfat_gam)
+
+
+# Plot of the model
+layout(matrix(1:2, ncol = 2))
+plot(bodyfat_gam)
+
+cat("Diagnostic plots")
+gam.check(bodyfat_gam)
+
+# For GCA
+cat("GCA for the bodyfat data:",bodyfat_gam$gcv.ubre.dev)
+
+
+# For AIC
+cat("AIC for the bodyfat data: ",bodyfat_gam$aic)
+
+
+# For degree of freedom
+cat("Degree of freedom for the bodyfat data:")
+bodyfat_gam$edf
+
+
+
+```
+
+To find out whether the variables are informative or not, we look at the P-valueo f the variables. From the P-value, it seems waistcirc, hipcirc, kneebreadth, and anthro3a look very informative. These variables are highly significant to the model. From the graphs of gam, we could see that there is a linear relationship between the variables--age,waistcirc, hipcirc, elbowbreadth, anthro3a. Whereas kneebreadth, anthro2c has no linear relationship and hence needs smoothing. In the summary of the gam, some variables have an effective degree of freedom (edf) is 1 (one). The age, waistcirc, hipcirc, elbowbreadth and anthro3a has one  as edf which means that these variables have a linear relationship (only). This same relationship is also shown in the graphs. Additionally, age, elbowbreadth, and anthro3c are not significant(0.05).   Gam.check shows different plots, residual vs predicted model shows the random   which no particular shape or pattern.The plot of response vs fitted values 
+shows the positive upward linear relationship. In the histogram of residual, We can clearly see that the data is positively skewed.Summary shows that the GCV is 8.4354 which is moderate R- squared adjusted is 0.953 likewise AIC is 345.708 which is high.
+        
+        
+        
+c) Fit the model below, note that some insignificant variables have been removed and some other variables are no longer smoothed. Report the summary, plot, GCV and AIC.
+      
+      \begin{verbatim}
+        bodyfat_gam2 <- gam(DEXfat~ waistcirc + s(hipcirc) + 
+                     s(kneebreadth)+ anthro3a +
+                     s(anthro3c), data = bodyfat)
+      \end{verbatim}
+      
+```{r, warning=FALSE}
+ bodyfat_gam2 <- gam(DEXfat~ waistcirc + s(hipcirc) + 
+                     s(kneebreadth)+ anthro3a +
+                     s(anthro3c), data = bodyfat)
+summary(bodyfat_gam2)
+
+layout(matrix(1:2, ncol = 2))
+plot(bodyfat_gam2)
+
+# For GCA
+cat("GCA for the bodyfat data:",bodyfat_gam2$gcv.ubre.dev)
+
+
+# For AIC
+cat("AIC for the bodyfat data: ",bodyfat_gam2$aic)
+
+gam.check(bodyfat_gam2)
+
+```
+
+Here, insignificant variables like age, elbowbreadth are removed in this model. This change in a model doesn't add much value because GCV, R-sq(adjusted) remain unchanged. Also, the AIC of the second model decreased. From the graphs and the gam.check, we find out that hipcirc has a linear relationship. The only change we can see in the residual plot is in the histogram, the frequency of residual at the point zero to two decreased and becomes less than ten.
+        
+    
+d) Again fit an additive model to the body fat data, but this time for a log-transformed response. Compare the three models, which one is more appropriate? (Hint: use AIC, GCV, residual plots, etc. to compare models).
+    
+```{r, warning=FALSE}
+logbodyfat <- log(bodyfat$DEXfat)
+bodyfat$logDex <- logbodyfat
+# head(bodyfat)
+bodyfat_gam3 <- gam(logDex ~ waistcirc + s(hipcirc) + 
+                     s(kneebreadth)+ anthro3a +
+                     s(anthro3c), data = bodyfat)
+
+# Summary for log body-fat
+summary(bodyfat_gam3)
+
+
+# AIC
+cat("AIC of logDex; ",bodyfat_gam3$aic)
+
+# GCV
+cat("GCV of logDex; ",bodyfat_gam3$gcv.ubre.dev)
+
+# Plot for third model
+layout(matrix(1:2, ncol = 2))
+plot(bodyfat_gam3)
+
+
+# Some Diagnostics For A Fitted Gam Model
+gam.check(bodyfat_gam3)
+
+```
+
+
+The log-transformed model shows the lesser GCV and negative AIC. However, R-squared has not changed in all three models. If I choose a model based on GCV and AIC, which is less for log-transformed and is the better model. However, if we consider R-squared (adjusted) that has not changed in any model. By looking at the residual plots, we can see that there is a decrease in scale in residual vs linear predictor. Likewise, the scale of the histogram's residual has
+changes(less). 
+        
+    
+    
+ e) Run the code below to fit a generalised additive model that underwent AIC-based variable selection (fitted using the **gamboost()** function). What variable(s) was/were removed by using AIC? 
+    
+      \begin{verbatim}
+       bodyfat_boost <- gamboost(DEXfat~., data = bodyfat)
+       bodyfat_aic <- AIC(bodyfat_boost)
+       bf_gam <- bodyfat_boost[mstop(bodyfat_aic)]
+      \end{verbatim}
+      
+```{r, warning=FALSE}
+
+data("bodyfat", package = "TH.data")
+bodyfat_boost <- gamboost(DEXfat~., data = bodyfat)
+       bodyfat_aic <- AIC(bodyfat_boost)
+       bodyfat_aic
+       bf_gam <- bodyfat_boost[mstop(bodyfat_aic)]
+       
+       # summary(bf_gam$baselearner)
+       # Plot
+       layout(matrix(1:2, ncol = 2))
+       plot(bf_gam)
+       
+       
+       # SUmmary
+      #  summary(bodyfat_boost)
+ 
+      
+       cat("extracting variable names")
+      vari <- extract(bf_gam, what='variable.names')
+      vari
+       # names(coef(bodyfat_boost))
+
+
+```
+
+
+The variable Age was removed using AIC.
+
+
+
+
+
+2. (Ex. 10.3 pg 208 in HSAUR, modified for clarity) Fit an additive model to the **glaucomaM** data from the **TH.data** library with *Class* as the response variable. Read the description of the dataset and the goals of the experiment. Which covariates should be in the model and what is their influence on the probability of suffering from glaucoma? (Hint: Since there are many covariates, use **gamboost()** to fit the GAM.) Make sure to provide a written summary of the model you chose and your corresponding analysis.
+
+
+```{r, warning=FALSE}
+data(GlaucomaM, package = "TH.data")
+# head(GlaucomaM)
+GlaM_boost <- gamboost(Class ~ ., data =GlaucomaM, family = Binomial())
+summary(GlaM_boost)
+
+layout(matrix(1:2, ncol = 2))
+plot(GlaM_boost)
+
+var_names  <- unname(extract(GlaM_boost,what='variable.names'))
+var_names
+
+#Using the variables indicated by gamboost, run a gam model to get summary data
+glau_gam <- gam(Class ~ s(abrs) + s(as)   + s(hic)  + s(hvc)  + s(mdi) + s(mdn) + 
+                  s(mhcg) + s(mhci) + s(mhcn) + s(mv)   +   phcg +   phci + s(phcn) + 
+                  s(tmi)  + s(tms)  + s(vari) + s(vars) + s(vass), 
+                data=GlaucomaM, family=binomial)
+summary(glau_gam)
+
+
+```
+
+
+
+The variables 'as"  , "abrs", "hic" , "mhcg", "mhcn", "mhci", "phcg", "phcn", "phci", "hvc",  "vass", "vars", "vari", "mdn", "mdi", "tms","tmi" should be in the model and they has their influence on the probability of suffering from glaucoma.  From the graph of glucoma data it is clear that phcg and phci has the liner relationship.This is why I removes s in the gam model. R squared of this over fitted is 1 and Deviance of this model is 100% which means that the model is extremly over fitted. 
+   
+
+
+```{r, warning=FALSE}
+## Referance:
+# https://cran.r-project.org/web/packages/mboost/vignettes/mboost_tutorial.pdf
+# http://www.stats.ox.ac.uk/~evans/TutzBinderReport.pdf
+# https://stats.stackexchange.com/questions/486/negative-values-for-aicc-corrected-akaike-information-criterion
+# https://stats.stackexchange.com/questions/190172/how-i-can-interpret-gam-results
+
+```
+
