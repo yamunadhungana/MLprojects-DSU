@@ -1,0 +1,221 @@
+---
+title: "Multi linear Regression: Cloud Data"
+author: "Yamuna Dhungana"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F,warning=F,echo=F,fig_height=10,fig_width=7,cache = F)
+```
+1. (Question 15.1 on pg. 295 in HSAUR, modified for clarity) Consider **alpha** dataset from the **coin** package. Compare the results when using **glht**  and TukeyHSD (Refer to Chapter 5 for TukeyHSD). 
+
+```{r}
+library(coin)
+library(multcomp)
+library(sandwich)
+library(lme4)
+library(HSAUR3)
+data(alpha)
+#head(alpha)
+alpha_data <- data.frame(
+  length = alpha$alength,
+  level = alpha$elevel
+)
+
+a_anov <- aov(level~length, data = alpha_data)
+
+# glht
+a_glht <- glht(a_anov, linfct = mcp(length = "Tukey"))
+
+# Summary of glht
+summary(a_glht)
+
+
+a_glht_sw <- glht(a_anov, linfct = mcp(length = "Tukey"), vcov = sandwich)
+summary(a_glht_sw)
+
+# tukeyHSD
+a_tukey <- TukeyHSD(a_anov)
+# Summary for tukeyhsd
+a_tukey
+
+
+# plot
+layout(matrix(1:2, ncol=2))
+plot(a_glht)
+plot(a_tukey)
+plot(a_glht_sw)
+
+coef(a_glht)
+vcov(a_glht)
+
+# Referance: Brian S. Everitt, Torsten Hothorn - A handbook
+#    of statistical analyses using R-CRC (2010)
+```
+                        
+                        
+                        Comparing the result with glht and TukeyHSD 
+The data alpha in R is taken from the Coin library. Data alpha has two variables length and level.The variable length has three levels-- short, intermediate, and long and the variable level is of alpha-synuclein mRNA. Various studies have linked alcohol dependence phenotypes to chromosome 4.
+One candidate gene is NACP (a non-amyloid component of plaques), coding for alpha-synuclein.    B¨onsch et al. (2005) found longer alleles of NACP-REP1 in alcohol-dependent patients and report that the allele lengths show some association with levels of expressed alpha-synuclein mRNA in alcohol-dependent subjects. Here we are interested to find the comparison between the two test glht and TukeyHSD. We want to answer the question if there is any difference in the distribution of the expression levels among allele length groups.
+Firstly, the variables of the alpha data are converted into the data frame, then the model isc reated with anova. The model is then tested with the glht and TukeyHSD. With TukeyHSD, none 
+of the pairwise comparison looks significant at 95% CI. Which means all the predictors have zero in their confidence intervals. As seen in the plot When 90% CI, there were significant values in long-short. Long-short is significant since it does not contain zero. which means there is some effect due the difference between long and short at 90% CI. Levels: long and short differ with Tukey's multiple comparison at 90%.Even though, Tukey HSD was adjusted for the heteroskedasticity and hence differs from the glht p-values. However, they both produced the similar results. Long - short is significant at 5% for glht.
+
+
+2. (Question 15.2 on pg. 296 in HSAUR, modified for clarity) Consider **clouds** data from **HSAUR3** package
+
+a. Read and write a report (no longer than one page) on the clouds data given in Chapter 15 section 15.3.3 from HSAUR Ed 3.
+
+
+
+
+                                clouds data from HSAUR3
+
+Weather modification, or cloud seeding, is the treatment of individual clouds or storm systems with various inorganic and organic materials in the hope of achieving an increase in rainfall.    The data used in Cloud in R were collected in the summer of 1975 from an experiment to  investigate the use of massive amounts of silver iodide (100 to 1000 grams per cloud) in cloud seeding to increase rainfall (Woodley et al., 1977).   In the experiment, which was conducted in an area of Florida, 24 days were judged suitable for seeding on the basis that a measured suitability criterion, denoted S-Ne, was not less than 1.5. Here S is the ‘seedability’, the difference between the maximum height of a cloud if seeded and the same cloud if not seeded predicted by a suitable cloud model, and Ne is the number of this quantity biases the decision for experimentation against naturally rainy days. Consequently,optimal days for seeding are those on which seedability is large and the natural rainfall early in the day is small. On suitable days, a decision was taken at random as to whether to seed or not. For each day the following variables were measured:
+seeding: a factor indicating whether seeding action occurred (yes or no),
+time: number of days after the first day of the experiment, 
+cloudcover: the percentage cloud cover in the experimental area, measured using radar,
+prewetness: the total rainfall in the target area one hour before seeding 
+(in cubic metres ×107 ),
+echomotion: a factor showing whether the radar echo was moving or stationary,
+rainfall: the amount of rain in cubic metres ×107.
+    
+The objective in analysing these data is to see how rainfall is related to the explanatory variables and, in particular, to determine the effectiveness of seeding. The method to be 
+used is multiple linear regression. Source: Brian S. Everitt, Torsten Hothorn - A handbook
+    of statistical analyses using R-CRC (2010) A linear model was fitted with the dependent and independent variable—rainfall and S-Ne respectively. Around the linear line, the confidence band was also estimated.  To estimate the confidence interval without increasing the type-1 error (False positive) requires the multiplication of the regression coefficients with a K- matrix. The linear model is fitted, setting the K matrix, and plotting both the regression line and confidence interval. It appears that the rainfall and S-ne values have an impact, So the graphical representation of it is shown. The scatter plot with the seeding and no seeding is plotted. The relationship of no seeding appears weaker between rainfall and S-ne values. Also, seeding has a stronger relationship. It appears that there is more uncertainty without seeding compared to the 
+seeding.  
+
+
+
+    
+```{r}
+data(clouds)
+confband <- function(subset, main) {
+mod <- lm(rainfall ~ sne, data = clouds, subset = subset)
+sne_grid <- seq(from = 1.5, to = 4.5, by = 0.25)
+K <- cbind(1, sne_grid)
+sne_ci <- confint(glht(mod, linfct = K))
+plot(rainfall ~ sne, data = clouds, subset = subset,
+xlab = "S-Ne criterion", main = main,
+xlim = range(clouds$sne),
+ylim = range(clouds$rainfall))
+abline(mod)
+lines(sne_grid, sne_ci$confint[,2], lty = 2)
+lines(sne_grid, sne_ci$confint[,3], lty = 2)
+}
+
+layout(matrix(1:2, ncol = 2))
+confband(clouds$seeding == "no", main = "No seeding")
+confband(clouds$seeding == "yes", main = "Seeding")
+
+
+# Referance: Brian S. Everitt, Torsten Hothorn - A handbook
+#    of statistical analyses using R-CRC (2010)
+
+```
+
+
+
+
+b. Consider the linear model fitted to the clouds data as summarized in Chapter 6, Figure 6.5. Set up a matrix K corresponding to the global null hypothesis that all interaction terms present in the model are zero. Test both the global hypothesis and all hypotheses corresponding to each of the interaction terms. 
+
+```{r}
+clouds_formula <- rainfall ~ seeding +
+seeding:(sne + cloudcover + prewetness + echomotion) +
+time
+clouds_lm <- lm(clouds_formula, data = clouds)
+summary(clouds_lm)
+
+# creating the matrix 
+d <- diag(length(coef(clouds_lm))-1)
+
+k_mat <- cbind(0,d )
+rownames(k_mat) <- names(coef(clouds_lm))[-1]
+k_mat
+
+cl_anov <- aov(clouds_formula, data = clouds)
+cl_glht <- glht(cl_anov, linfct= k_mat)
+
+summary(cl_glht)
+
+# plot
+layout(matrix(1:1, ncol=1))
+op=par(mar=c(4.2,14,3.8,2))
+ci_clouds=confint(cl_glht)
+plot(ci_clouds, xlab="95% Confidence Intervals", 
+     main="Confidence Intervals for Interaction Terms")
+par(op)
+
+
+
+# Referance: Brian S. Everitt, Torsten Hothorn - A handbook
+#    of statistical analyses using R-CRC (2010)
+
+```
+
+
+
+
+The glht function was utilized to determine whether the interactions are equal to zero. The summary found that only one interaction term, seedingyes:sne, is not equal to zero, significant at the alpha<0.1 level. The corresponding graph shows how close the right-boundary of the confidence interval for seedingyes:sne is to 0, confirming the results from the summary. The graph also shows that seedingno:cloudcover and seedingyes:cloudcover also have boundaries close to 0. However, these confidence intervals have much smaller ranges which is likely why the summary is not finding the p-values anywhere near significant.
+
+
+
+
+c. How does adjustment for multiple testing change which interactions are significant?
+
+
+
+A summary of the original model finds the variables seedingyes, time, seedingyes:sne, 
+and seedingno:cloudcover to be significant for fitting the model at the alpha<0.1 level.
+A summary of the cl_glht model, after removing the variables that were not interaction 
+terms, only found seedingyes:sne to be significant at the alpha<0.1 level.
+
+
+
+
+3. (Question 15.3 on pg. 296 in HSAUR, modified for clarity) or the logistic regression model presented in Chapter 7 in Figure 7.7, perform a multiplicity adjusted test on all regression coefficients (except for the intercept) being zero. Do the conclusions drawn in Chapter 7 remain valid?
+
+```{r}
+data(womensrole)
+formula <- cbind(agree, disagree) ~ gender * education
+womensrole_glm_1 <- glm(formula, data = womensrole,
+family = binomial())
+summary(womensrole_glm_1)
+
+# creating matrix
+mat_k <- diag(length(coef(womensrole_glm_1))-1)
+k <- cbind(0, mat_k)
+rownames(k) <-  names(coef(womensrole_glm_1))[-1]
+
+# glht
+wrole_glht <- glht(womensrole_glm_1, linfct = k)
+
+# Printing summary
+summary(wrole_glht)
+
+
+
+# Referance: Brian S. Everitt, Torsten Hothorn - A handbook
+#    of statistical analyses using R-CRC (2010)
+  
+```
+
+                    
+                    Varyfication of the result for womensrole dataset
+                    
+
+The data womensrole is taken from a survey form 1917/1975 asking both female and male 
+responders about their opinion on the satatemets: women should take care if running their
+homes and running the country up to men. The data in R is taken from the HASUR3 package. 
+The dataset has total 42 observations with four variables. The gender variable has the two
+level male and female.The questions of interest here are whether the responses of men and
+women differ and how years of education affect the response.
+
+The glht function was fitted as original model from chapter 7, excluding the intercept 
+term. The original summary of the model found that gender, education, and the interaction
+gender:education were significant in fitting the model at the alpha<0.05 level. A summary 
+of the glht function finds that gender, education, and gender:education are significant at
+the alpha<0.05 level and thus are not equal to 0. This makes them significant variables and
+the conclusions drawn in the original summary remain valid. 
+
+
+
