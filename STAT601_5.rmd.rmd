@@ -1,0 +1,279 @@
+---
+title: "Regression Tree with HSAUR"
+author: "Yamuna Dhungana"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F,warning=F,echo=F,fig_height=10,fig_width=7,cache = F)
+```
+
+
+## Exercises
+
+1. (Ex. 9.1 pg 186 in HSAUR, modified for clarity) The **BostonHousing** dataset reported by Harrison and Rubinfeld (1978) is available as a `data.frame` structure in the **mlbench** package (Leisch and Dimitriadou, 2009). The goal here is to predict the median value of owner-occupied homes  (`medv` variable, in 1000s USD) based on other predictors in the dataset. 
+
+    a) Construct a regression tree using rpart(). Discuss the results, including these key components:
+    
+        - How many nodes does your tree have? 
+        
+        - Did you prune the tree? Did it decrease the number of nodes? 
+        
+        - What is the prediction error (MSE)?  
+        
+        - Plot the predicted vs. observed values. 
+        
+        - Plot the final tree.
+        
+
+## First of all, installing all the required libraries for the exercise
+
+```{r}
+library("vcd")
+library("lattice")
+library("randomForest")
+library("party")
+library("partykit")
+library("mboost")
+library("TH.data")
+library("ipred")
+library("rpart")
+library(ggplot2)
+
+```
+
+# 
+```{r, warning=FALSE}
+data("BostonHousing",package = "mlbench")
+
+set.seed(seed = 54321) # To avoid the random different output different time
+
+# Building regression tree that requires minimum no of observation of 10 to split
+median_rpart <-
+    rpart(medv~., data = BostonHousing, control = rpart.control(minsplit = 10))
+
+# Prints the complexity parameter (cp), the minimum improvement in the model
+# needed at each node
+
+printcp(median_rpart)
+plotcp(median_rpart)
+#Referance: Dr.Saunders slide
+
+# Plotting the regression Tree
+plot(as.party(median_rpart),terminal_panel = node_boxplot,
+tp_args = list(id = FALSE))
+
+
+#plot(as.party(median_rpart), terminal_panel = node_boxplot,
+#tp_args = list(id = FALSE))
+
+print(median_rpart)
+print(median_rpart$cptable)
+
+# Assigning the minimum value of xerror from the CP
+opt <- which.min(median_rpart$cptable[,"xerror"]) 
+cp <- median_rpart$cptable[opt, "CP"]
+median_prune <- prune(median_rpart, cp = cp)
+
+plot(as.party(median_prune),terminal_panel = node_boxplot,
+     tp_args = list(id = FALSE))
+
+# Referance: Dr. Saunders Slide
+
+# Predicting the values
+median_predict <- predict(median_rpart, data = BostonHousing)
+
+# Base R plot
+xlim <- range(BostonHousing$medv)
+plot(
+  median_predict ~ medv,
+  data = BostonHousing,
+  xlab = "Observed Value",
+  ylab = "Predicted Value",
+  ylim = xlim,
+  xlim = xlim,
+  main = "Base R: Observed vs predicted values for \n regression tree"
+)+
+abline(a = 0, b = 1)
+
+# Referance: Dr. Saunders Slide
+
+# GGplot
+ggplot(BostonHousing, aes(medv, median_predict)) +
+geom_point(color = "blue")+ geom_abline()+ 
+ ggtitle("ggplot:Observed vs predicted values for\n Regression tree ") +
+  xlab("observed") + ylab("Predicted")
+
+# MSE for the regression tree
+Regression_Tree <-  mean((BostonHousing$medv - median_predict)^2)
+cat("The MSE for Regression Tree is: ",Regression_Tree)
+
+```
+
+My tree has nine(9) nodes. Yes I pruned the tree but I couldn't see any changes in my tree. It already has the minimum no of tree therefore, the prune was not so effective. The predictive error of the data is 12.71556
+    
+    
+    
+b) Apply bagging with 50 trees. Report the prediction error (MSE) and plot the predicted vs observed values.
+
+```{r}
+set.seed(seed = 54321)
+# since we are using bagging tree 50 threre fore length is 50
+trees <- vector(mode = "list", length = 50)
+n <- nrow(BostonHousing)
+bootsamples <- rmultinom(length(trees), n, rep(1, n)/n)
+mod <- rpart(medv ~ ., data = BostonHousing,
+control = rpart.control(xval = 0))
+for (i in 1:length(trees))
+trees[[i]] <- update(mod, weights = bootsamples[,i])
+
+
+# out of bag data
+classprob <- matrix(0, nrow = n, ncol = length(trees))
+for (i in 1:length(trees)) {
+classprob[,i] <- predict(trees[[i]],
+newdata = BostonHousing)
+classprob[bootsamples[,i] > 0,i] <- NA
+}
+
+# predicted values
+avg <- rowMeans(classprob, na.rm = TRUE)
+
+
+# MSE for the dara
+Bagging_50 <- mean((BostonHousing$medv - avg) ^ 2)
+cat("The MSE Bagging 50 is:", Bagging_50) 
+
+
+# Base R plot
+xlim <- range(BostonHousing$medv)
+plot(
+  avg ~ medv,
+  data = BostonHousing,
+  xlab = "Observed",
+  ylab = "Predicted",
+  ylim = xlim,
+  xlim = xlim,
+  main = "Base R: Observed vs predicted values for \n bagging_50"
+)+
+abline(a = 0, b = 1)
+
+
+# Referance : Brian S. Everitt, Torsten Hothorn - "A handbook of statistical analyses using R-CRC (2010)" page- 170
+
+# ggplot
+ggplot(BostonHousing, aes(medv, avg)) +
+geom_point(color = "blue")+ geom_abline()+ 
+ ggtitle("ggplot:Observed vs predicted values for\n bagging_50") +
+  xlab("observed") + ylab("Predicted")
+
+```
+
+The MSE for the bagging of 50 data is 17.21584. Most of the predicted  values are seen in between the 10 to 40 and very few near 50. 
+       
+      
+       
+c) Apply bagging using the randomForest() function. Report the prediction error (MSE). Was it the same as (b)? If they are different what do you think caused it?  Plot the predicted vs. observed values.
+
+```{r}
+set.seed(seed = 12345)
+rf <- randomForest(medv ~ ., mtry=13, data = BostonHousing, ntree= 50)
+pred_rf <- predict(rf, newdata = BostonHousing)
+
+# MSE 
+Random_Forest_mtry13 <- mean((BostonHousing$medv - pred_rf)^2)
+cat("MSE for Random Forest mtry13 :",Random_Forest_mtry13 )
+
+plot(
+  pred_rf ~ medv,
+  data = BostonHousing,
+  xlab = "Observed",
+  ylab = "Predicted",
+  ylim = xlim,
+  xlim = xlim,
+  main = "Base R: Observed vs predicted values for \n Randomforest_mtry13()"
+)+
+abline(a = 0, b = 1)
+
+# Referance : Brian S. Everitt, Torsten Hothorn - "A handbook of statistical analyses using R-CRC (2010)" page- 171
+
+# ggplot
+ggplot(BostonHousing, aes(medv, pred_rf)) +
+geom_point(color = "blue")+ geom_abline()+ 
+ ggtitle("ggplot:Observed vs predicted values for\n Randomforest_mtry13()") +
+  xlab("observed") + ylab("Predicted")
+
+
+```
+
+The MSE of the random_forest is  1.788203, I think the graph is some what different from the question-b . In question-b the graph is bit more scattered around the regression line. Whereas, in this question the sample are more closely packed within the lines. This might be because we used mtyr =13 which means using all the variables with 50 trees. 
+    
+   
+d) Use the randomForest() function to perform random forest. Report the prediction error (MSE).  Plot the predicted vs. observed values.
+    
+```{r, warning=FALSE}
+rff <- randomForest(medv ~ ., data = BostonHousing)
+pred_rff <- predict(rff, newdata = BostonHousing)
+
+# MSE 
+Random_Forest <- mean((BostonHousing$medv - pred_rff)^2)
+cat("MSE for Random Forest:", Random_Forest)
+
+# Referance: https://stackoverflow.com/questions/14219472/r-calculating-mse
+
+# Base R
+plot(
+  pred_rff ~ medv,
+  data = BostonHousing,
+  xlab = "Observed",
+  ylab = "Predicted",
+  ylim = xlim,
+  xlim = xlim,
+  main = "Base R: Observed vs predicted values for Randomforest()"
+)+
+abline(a = 0, b = 1)
+
+# ggplot
+ggplot(BostonHousing, aes(medv, pred_rf)) +
+geom_point(color = "blue")+ geom_abline()+ 
+ ggtitle("ggplot:Observed vs predicted values for\n  Randomforest()") +
+  xlab("observed") + ylab("Predicted")
+
+```
+
+The MSE of the Random Forest whose default no of trees is 500 is 1.946478. The observed vs predicted data looks similar to the data with the random forest with 50 trees.
+      
+    
+    
+e) Include a table of each method and associated MSE. Which method is more
+    accurate?
+    
+```{r,warning=FALSE}
+cat(" The error table for the data")
+final_MSEtable <- data.frame (
+  Regression_Tree,
+  Bagging_50,
+  Random_Forest_mtry13,
+  Random_Forest
+)
+
+final_MSEtable
+
+
+# Referances:
+# 1. https://rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf 
+# 2. http://www.sthda.com/english/wiki/ggplot2-essentials 
+# 3. Brian S. Everitt, Torsten Hothorn - "A handbook of statistical analyses using R-CRC (2010)" page- 170- 171 
+# 4. Dr. Saunders Slide 
+# 5. https://stackoverflow.com/questions/14219472/r-calculating-mse
+
+```
+Since, more trees is always better because of less error, Here Random forest with the default no of trees of 500 has the lowest MSE. Therefore, Random forest is more acurate.
+
+
+
+
+
+
+
+    
