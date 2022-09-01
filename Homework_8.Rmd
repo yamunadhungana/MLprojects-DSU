@@ -1,0 +1,291 @@
+---
+title: "Multiple Linear Regression from HSAUR"
+author: "Yamuna Dhungana"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F,warning=F,echo=F,fig_height=10,fig_width=7,cache = F)
+```
+
+
+## Exercises
+
+1. Apply a median regression analysis on the **clouds** data. Compare this to the linear regression model from Chapter 6. Write up a formal summary of the two analyses and provide a justified recommendation on which analysis the researcher should be using.
+  
+```{r}
+library(quantreg)
+library(ggplot2)
+library("gridExtra")
+data("clouds", package = "HSAUR3")
+
+
+clouds_formula <- rainfall ~ seeding + seeding:(sne + cloudcover + prewetness + echomotion) + time
+che.lm <- lm(clouds_formula, data = clouds)
+summary(che.lm)
+cat("The seedingyes variable is the most significant variable in the model followed by seedingyes:sne")
+
+
+# Median regression 
+cat("Now we choose continous variable sne to fit our linear model")
+med_reg <- rq(rainfall ~ sne, data = clouds, tau= 0.5)
+# To see the P-values
+summary(med_reg, se = "boot")
+# To see the coffecients
+# summary(med_reg)
+
+
+
+# Linear regression
+cat("Now we choose continous variable sne to fit our linear model")
+lin_reg <- lm(rainfall~sne, data = clouds)
+summary(lin_reg)
+
+
+
+# MSE for the models 
+MSE.med <- mean((predict(med_reg, data = clouds, type = "response")-clouds$rainfall)^2)
+MSE.lm <- mean((predict(lin_reg, data = clouds)-clouds$rainfall)^2)
+
+# Creating the table for the errors
+final.data <- cbind(MSE.med, MSE.lm)
+colnames(final.data) <- c("MSE of Median Regression", "MSE of Linear regression")
+knitr::kable(final.data, digits = 3, caption = "MSE for the Median and linear Regression")
+
+
+# Base R 
+psymb <- as.numeric(clouds$seeding)
+plot(rainfall ~ sne,
+     main = ("Rainfall determined by suitability criterion"), data = clouds, pch = psymb,
+xlab = "S-Ne criterion")
+abline(lm(rainfall ~ sne, data = clouds,
+subset = seeding == "no"))
+abline(lm(rainfall ~ sne, data = clouds,
+subset = seeding == "yes"), lty = 2)
+legend("topright", legend = c("No seeding", "Seeding"),
+pch = 1:2, lty = 1:2, bty = "n")
+
+# Ggplot
+ggplot(data=clouds, aes(x=sne, y=rainfall, col=seeding)) +
+  geom_point() + geom_smooth(method='lm') +
+  labs(title='Rainfall determined by suitability criterion',x='S-NE Criterion', 
+       y='Rainfall')
+
+# Graphical comaprision using Base R
+layout(matrix(1:2,ncol=2))
+psymb <- as.numeric(clouds$seeding)
+plot(rainfall ~ sne, data = clouds, pch = psymb,
+xlab = "S-Ne criterion")
+abline(lm(rainfall ~ sne, data = clouds,
+subset = seeding == "no"), col = "Red")
+abline(lm(rainfall ~ sne, data = clouds,
+subset = seeding == "yes"),col = "Green", lty = 2)
+legend("topright", legend = c("No seeding", "Seeding"),
+pch = 1:2, lty = 1:2, bty = "n")
+
+plot(rainfall ~ sne, data = clouds, pch = psymb,
+xlab = "S-Ne criterion")
+abline(rq(rainfall ~ sne, data = clouds, tau = 0.5,
+subset = seeding == "no"),col = "Red")
+abline(rq(rainfall ~ sne, data = clouds,tau = 0.5,
+subset = seeding == "yes"),col = "Green", lty = 2)
+legend("topright", legend = c("No seeding", "Seeding"),
+pch = 1:2, lty = 1:2, bty = "n")
+
+
+
+# Graphical comparision in GGplot
+gg_lm <- ggplot(clouds, aes(x = sne,y = rainfall, col = seeding))+ geom_point()+ geom_smooth(method='lm',se=FALSE)+
+  labs(title = "GGplot:Linear Regression rainfall \n explained by suitability criterion", 
+       xlab = "S-Ne ", ylab = "Rainfall" )
+
+gg_med <- ggplot(clouds, aes(x = sne,y = rainfall, col = seeding))+ geom_point()+ 
+  labs(title = "GGplot:Median Regression rainfall \n explained by suitability criterion", 
+       xlab = "S-Ne ", ylab = "Rainfall" )+
+  stat_quantile(quantiles=c(0.50), method='rq')
+
+
+grid.arrange(gg_lm, gg_med, ncol= 2)
+
+
+# referance : Brian S. Everitt, Torsten Hothorn - A handbook of statistical analyses using R-CRC 
+# (2010)
+# https://rstudio.com/wp-content/uploads/2016/11/ggplot2-cheatsheet-2.1.pdf
+
+```
+
+
+Comparison between median regression analysis with linear regression
+
+
+The data 'Clouds' from the HSAUR3 library was collected in the summer of 1975 from an
+experiment to investigate the use of massive amounts of silver iodide 100 to 1000 grams
+per cloud in the cloud, seeding to increase rainfall. The experiment was conducted in an
+area of Florida for 24 days. It was judged suitable for seedings on the basis that a 
+measured suitability criterion (SNE). The data has a total variable of 7 with a sample 
+of 24.
+To compare the model, both median regression and linear regression was fitted, calculated 
+the mean squared errors and visual evidence. Quantreg library was used for performing median
+regression, and ggplot for the visual evidence.
+
+The model was fitted, with all the variables as in chapter-6 of the textbook.  It was done to 
+find out which variable is more significant. From the summary, it appears seedingyes appear 
+significant at 0.1 %. It looks like the seedingyes variable is the most significant variable
+in the model followed by seedingyes:sne. The results of the linear model fit, suggests that 
+rainfall can be increased by cloud seeding. Moreover, the model indicates that higher values
+of the S-Ne criterion lead to less rainfall, but only on days when cloud seeding happened, 
+i.e., the interaction of seeding with S-Ne significantly affects rainfall. Now we choose 
+continuous variable sne to fit our linear and median model. Fitting the median regression 
+with rq() and wanted to find out the significant variable in the model so, se = boot is used
+in the summary. The result showed no significance. I further find the MSE for the two models, 
+here MSE for the linear regression as shone in table:1 is 7.718, and MSE for median regression
+is 7.723. The difference between the MSE is 0.01. I additionally plotted the graphs to compare
+the two models. From the plot of the median regression model on the absence of seeding is in 
+such a way that the median regression line has a positive slope. Whereas, in the linear regression,
+it appears that it has a negative slope. This indicates that there is high variability in the 
+rainfall data when cloud seeding is absent. Also, the median regression line is not weighted by 
+the outliers. Therefore, median regression seems better at explaining the overall variability of
+the rainfall variable. 
+
+Hence, I recommend median regression for the analysis of cloud data.
+
+
+    
+
+
+2. Reanalyze the **bodyfat** data from the **TH.data** package. 
+
+a) Compare the regression tree approach from chapter 9 of the textbook to median regression and summarize the different findings.
+
+```{r}
+library(rpart)
+library(partykit)
+data(bodyfat, package = "TH.data")
+bodfat_rpart <- rpart(DEXfat ~ age + waistcirc + hipcirc + elbowbreadth + kneebreadth, data = bodyfat, control = rpart.control(minsplit = 10))
+
+# summary(bodfat_rpart)
+plot(as.party(bodfat_rpart), tp_args = list(id = FALSE))
+
+cat("CP table for the bodyfat")
+print(bodfat_rpart$cptable)
+ 
+min_cp <- which.min(bodfat_rpart$cptable[,"xerror"])
+paste("CP value with the lowest xerror is: ",min_cp)
+ 
+# extract the CP
+cat("extracting the variable with the lowest xerror") 
+cp <- bodfat_rpart$cptable[min_cp, "CP"]
+bodyfat_prune <- prune(bodfat_rpart, cp = cp)
+
+cat("Predicting the pruned regression tree of bodyfat data")
+reg_tree <- predict(bodyfat_prune, data = bodyfat)
+
+# Calculating MSE for the regression Tree
+observed <- bodyfat$DEXfat
+predict <- reg_tree
+Reg_MSE <- mean((observed - predict)^2)
+
+cat("Based on the pruning, plotting the regression tree")
+plot(as.party(bodyfat_prune), tp_args = list(id = FALSE))
+
+
+# Median regression model
+bodyfat_medreg <- rq(DEXfat ~ age + waistcirc + hipcirc + elbowbreadth + kneebreadth, data=bodyfat, tau = 0.50)
+summary(bodyfat_medreg)
+med_reg_MSE<-  mean(bodyfat_medreg$residuals^2)
+
+
+data_final <- cbind(Reg_MSE, med_reg_MSE)
+colnames(data_final) <- c("MSE of Regression tree", "MSE of Median regression")
+knitr::kable(data_final, digits = 3, caption = "MSE for the regression tree and median Regression")
+
+
+# referance : Brian S. Everitt, Torsten Hothorn - A handbook of statistical analyses using R-CRC 
+# (2010)
+# https://stats.stackexchange.com/questions/110999/r-confused-on-residual-terminology
+```
+
+b) Choose one dependent variable. For the relationship between this variable and DEXfat, create linear regression models for the 5%, 10%, 90%, and 95% quantiles. Plot DEXfat vs that dependent variable and plot the lines from the models on the graph. 
+
+```{r}
+cat("Although we can choose waistcirc or hipcirc from the above pruned regression tree because it explaines the maximun data but I also want to choose by linear regression")
+
+# For linear regression
+
+bodyfat_lm <- lm(DEXfat ~ age + waistcirc + hipcirc + elbowbreadth + kneebreadth, data = bodyfat)
+summary(bodyfat_lm)
+
+# TAU = c(0.05, 0.10, 0.90, 0.95)
+
+bodyfat_0.05 <- rq(DEXfat ~ age + waistcirc, data = bodyfat,tau = 0.05)
+summary(bodyfat_0.05)
+bodyfat_0.10 <- rq(DEXfat ~ age + waistcirc, data = bodyfat,tau = 0.10)
+summary(bodyfat_0.10)
+bodyfat_0.90 <- rq(DEXfat ~ age + waistcirc, data = bodyfat,tau = 0.90)
+summary(bodyfat_0.90)
+bodyfat_0.95 <- rq(DEXfat ~ age + waistcirc, data = bodyfat,tau = 0.95)
+summary(bodyfat_0.95)
+
+
+# Base plot
+plot(DEXfat ~ waistcirc, data = bodyfat, main = "Base R : QUantile regression for the dexfat\n explained by waist circumferance", xlab = "Waist circumferance")
+abline(rq(DEXfat ~ waistcirc, data=bodyfat, tau = 0.05), col='blue')
+abline(rq(DEXfat ~ waistcirc, data=bodyfat, tau = 0.10), col='Red')
+abline(rq(DEXfat ~ waistcirc, data=bodyfat, tau = 0.90), col='Green')
+abline(rq(DEXfat ~ waistcirc, data=bodyfat, tau = 0.95), col='Pink')
+legend('bottomright', legend = c('5% Quantile', '10% Quantile','90% Quantile', '95% Quantile'),
+       fill=c('red','green','blue', 'pink'))
+
+
+
+# GGplot
+
+ggplot(bodyfat, aes(x =waistcirc,y = DEXfat))+ geom_point()+
+  labs(title = "ggplot : Quantile regression for the dexfat \n explained by waist circumferance", 
+  xlab = "Waist Circumferance")+
+  stat_quantile(quantiles=c(0.05), method='rq', aes(colour= '5%'))+
+  stat_quantile(quantiles=c(0.10), method='rq', aes(colour= '10%'))+
+  stat_quantile(quantiles=c(0.90), method='rq', aes(colour= '90%'))+
+  stat_quantile(quantiles=c(0.95), method='rq', aes(colour= '95%'))+
+  scale_color_manual(name="Quantile Percent", values = c('5%' = "Blue", '10%' = "Red", '90%' = "Green", '95%' = "Black"))
+  #scale_color_manual(values = colors)
+   
+
+```
+
+c) Provide a formal write up of the methodologies and of your results
+
+`Analyzing Body fat with the regression tree and median regression`
+
+Bodyfat data was from the Garcia et al. (2005) report on the development of predictive
+regression equations for body fat content through common anthropometric measurements. 
+The data obtained from the healthy German women have ten variables and 71 number of
+samples. In R, the dataset bodyfat can be available inside the TH.data package. Two models, 
+regression tree and median regression were fitted with the bodyfat data. 
+
+Firstly, I loaded all the libraries that will be used while performing the task.  Rpart library
+helps to fit the regression tree in R. The dataset is then loaded with function 
+data (“dataset name”, package = “package name”). With the help of the rpart function, I fit the 
+regression model with the ten minsplit, which means that the data must have a minimum no of 10
+observation in a node for a split to draw a regression tree. Then the summary is viewed. Additionally,
+the weakest link in the model is also found out and removed with the help of prune.  The graphical representation of the regression tree before and after pruning is then plotted with the help of the 
+partykit library. Mean square error (MSE) for the model is calculated, which helps in finding a better
+model.
+
+Secondly, Median regression is fitted with the help of the quantreg library. Since we are fitting for
+the median, the value of tau is a 0.5 summary of the model is viewed. The mean square of the median regression is then calculated and combined in a table with the regression tree MSE. 
+
+Thirdly, the result for both models is viewed. In the regression tree model, it appears waistcirc and 
+hipcirc explain the maximum data of the bodyfat data. Since the model chooses waistcirc as the root of
+the model. The same information is provided by the plot. The accuracy of the model is calculated with 
+the help of the mean square error method. The MSE of the model is 10.171.The median regression model is
+then fitted based on the above-pruned tree, the variables waist circumference and hip circumference 
+splits explain the majority of the data, and I chose waist circumference for quantile regression. Based
+on this analysis, the pruned regression tree has a lower MSE than the median regression model and has 
+an MSE of 15.025. Therefore regression tree seems more favorable.
+
+For the visual evidence, the relationship of Dexfat to Age by Waist Circumference, all four quantiles
+regression lines have a positive slope. It also appears the slopes of 5 and 10 percentage converges 
+at a point at the end.  And the slopes of 90 and 95 percentage converge at a point at the beginning. 
+Within the given percentage, it looks like most of the point have been covered within the interval. 
+
