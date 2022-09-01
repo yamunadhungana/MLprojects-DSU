@@ -1,0 +1,557 @@
+---
+title: "Unsupervised learning exercise from HSAUR"
+author: "Yamuna Dhungana"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F,warning=F,echo=F,fig_height=10,fig_width=6,cache = F)
+```
+
+1. (Ex. 8.1 in HSAUR, modified for clarity) The \textbf{galaxies} data from \textbf{MASS} contains the velocities of 82 galaxies from six well-separated conic sections of space (Postman et al., 1986, Roeder, 1990). The data are intended to shed light on whether or not the observable universe contains 
+superclusters of galaxies surrounded by large voids. The evidence for the existence of superclusters would be the multimodality of the distribution of velocities.(8.1 Handbook)
+
+    a) Construct histograms using the following functions: 
+    
+        -hist() and ggplot()+geom_histogram()
+      
+        -truehist() and ggplot+geom_histogram() (make sure that the histograms show proportions, not counts.)
+      
+        -qplot()
+        
+    Comment on the shape and properties of the variable based on the five plots. Do you notice any 
+    sets of observations clustering? (Hint: You can adjust bin number or bin size as you try to 
+    determine the properties of the variable, but use the same bin settings between plots in your
+    final analysis. You can also overlay the density function or use the rug command.)
+    
+```{r, warning=FALSE}
+library(MASS)
+library(ggplot2)
+data(galaxies, package = "MASS")
+
+# Histogram
+hist(galaxies, main = "Base R: Velocity of galaxies",
+     xlab= "Galaxies",
+     ylab= "Velocity",
+     col = "#4dff4d")
+
+ggplot() + aes(galaxies)+
+  geom_histogram(binwidth = 5000, breaks = c(seq(5000, 35000, 5000)), boundary = NULL,
+                 color = "black", fill= "#ffaa80") +
+  labs(title = "ggplot: Velocity of galaxies", x = "Galaxies", y = "Velocity")
+
+## true Histogram
+truehist(galaxies,
+         xlab="Galaxies",
+         ylab="Velocity",
+         main="Base R: Velocity of galaxies",
+         col="#4dff4d")
+Bins = 6 
+Breaks = seq(5000, 35000, length.out = Bins + 1)
+Binwidth = Breaks[2] - Breaks[1]
+ggplot() + aes(galaxies) + geom_histogram(aes(y = ..density..), binwidth = Binwidth, 
+                                          breaks = c(seq(5000, 35000, 5000)), boundary = NULL, 
+                                          fill = "#ffaa80", color = "black", closed = "left") + 
+  labs(title = "ggplot: True Histogram showing galaxies")
+
+
+## qplot 
+
+qplot(galaxies) +
+  labs(title='base R: Histogram showing galaxies (qplot)',
+       x='Velocity',
+       y='Frequency',
+       col="#4dff4d")
+
+BINS <- 30
+#BINS <- 6
+BREAKS <- seq(5000, 35000, length.out = BINS + 1)
+BINWIDTH <- BREAKS[2] - BREAKS[1]
+ggplot() + aes(galaxies) +
+  geom_histogram(bins = BINS, breaks = BREAKS, binwidth = BINWIDTH, boundary = NULL, 
+                 fill = "#ffaa80", color = "black") +
+  labs(x = "velocity", y= "Frequency", title = 'ggplot: Histogram showing galaxies (qplot)')
+
+
+```
+
+From the graphs, it appears that all the graphs for hist and true-hist appear to be the same. The only difference from the graphs is the value of the y-axis. Histograms give the frequency. Whereas, true-hist gives the probability of the hist. We can see the clustering group clustered in the middle. We also can see some clusters on either side of the cluster. We can say that there are three clusters, but in the plot, there is an extra one cluster in the middle cluster. Therefore we can assume there ate four clusters in the galaxies data.
+      
+    
+b) Create a new variable \textit{loggalaxies} = $\log$(galaxies). Repeat part a) using the `loggalaxies` variable. Does this affect your interpretation of the graphs?
+
+```{r, warning=FALSE}
+logalaxies <- log(galaxies)
+
+hist(logalaxies, main = "Base R: Velocity of log-galaxies",
+     xlab= "log(Galaxies)",
+     ylab= "Velocity",
+     col = "#4dff4d")
+
+Bins = 7 
+Breaks = seq(9, 10.5, length.out = Bins + 1)
+Binwidth = Breaks[2] - Breaks[1]
+ggplot() + aes(logalaxies)+
+  geom_histogram(binwidth = Binwidth, breaks = Breaks, boundary = NULL, color = "black",
+                 fill= "#ffaa80") +
+  labs(title = "ggplot: Velocity of log-galaxies", x = "log(Galaxies)", y = "Velocity")
+
+truehist(logalaxies,
+         xlab="log(Galaxies)",
+         ylab="Velocity",
+         main="Base R: Velocity of log-galaxies",
+         col="#4dff4d")
+Bins = 7 
+Breaks = seq(9, 10.5, length.out = Bins + 1)
+Binwidth = Breaks[2] - Breaks[1]
+ggplot() + aes(logalaxies) + geom_histogram(aes(y = ..density..), binwidth = Binwidth, 
+                                            breaks = Breaks, boundary = NULL, fill = "#ffaa80",
+                                            color = "black", closed = "left") + 
+  labs(title = "ggplot: True Histogram showing galaxies")
+
+
+qplot(logalaxies) +
+  labs(title='base R: Histogram showing log-galaxies (qplot)',
+       xlab='log(galaxies',
+       ylab ='Velocity',
+       col="#4dff4d")
+
+
+Bins = 30 
+Breaks = seq(9, 10.5, length.out = Bins + 1)
+Binwidth = Breaks[2] - Breaks[1]
+ggplot() + aes(logalaxies) +
+  geom_histogram(bins = Bins, breaks = Breaks, binwidth = Binwidth, boundary = NULL, fill = "#ffaa80",
+                 color = "black") +
+  labs(x = "velocity", y= "Frequency", title = 'ggplot: Histogram showing galaxies (qplot)')
+
+
+```
+
+In this question, we constructed the graph, which is the same as the question-a but in the log form. The scale of the values in the log form for the galaxies. A similar description applies to this question as well, and we can say that we can see three main clusters with one small cluster in between the concentrated cluster.
+      
+    
+c) Construct kernel density estimates using two different choices of kernel functions and three choices of bandwidth (one that is too large and “oversmooths,” one that is too small and “undersmooths,” and one that appears appropriate.) Therefore you should have six different kernel density estimates plots (you may combine plots when appropriate to reduce the number of plots made). Discuss your results. You can use the log scale or original scale for the variable, and specify in the plot x-axis which you choose.
+    
+```{r, warning=FALSE}
+library(KernSmooth)
+mydata <- as.data.frame(galaxies)
+
+#plot.new()
+# Gassuian with Bandwidh - 5000
+truehist(galaxies,ymax=0.0002,col="green", main="base R: Gaussian Over Smooth with bandwidth=5000")+
+lines(density(galaxies,kernel="gaussian",bw=5000),col="red")
+
+#ggplot
+Bins = 6 
+Breaks = seq(5000, 35000, length.out = Bins + 1)
+Binwidth = Breaks[2] - Breaks[1]
+ggplot(mydata, aes(x=galaxies)) + 
+  geom_histogram(aes(y=..density..),# Histogram with density instead of count on y-axis
+                 bins = Bins,
+                 binwidth=Binwidth,
+                 colour="black", fill="#ffaa80") +
+  stat_density(kernel='gaussian', bw = 5000, fill = NA, col = "red") +
+  labs(title = "ggplot: Gaussian Over Smooth")  # Overlay with transparent density plot
+
+
+### kernel = Triangular 
+truehist(galaxies,ymax=0.0002,col="green", main="base R: triangular Over Smooth with bandwidth=5000")+
+lines(density(galaxies,kernel="triangular",bw=5000),col="red")
+
+
+# ggplot
+Bins = 6 
+Breaks = seq(5000, 35000, length.out = Bins + 1)
+Binwidth = Breaks[2] - Breaks[1]
+ggplot(mydata, aes(x=galaxies)) + 
+  geom_histogram(aes(y=..density..),# Histogram with density instead of count on y-axis
+                 bins = Bins,
+                 binwidth=Binwidth,
+                 colour="black", fill="#ffaa80") +
+  stat_density(kernel='triangular', bw = 5000, fill = NA, col = "red") +
+  labs(title = "ggplot: triangular Over Smooth")  # Overlay with transparent density plot
+
+
+
+
+#######
+# Gassuian Base R with bw= 800
+truehist(galaxies,ymax=0.0002,col="green", main="base R: Gaussian Over Smooth with bandwidth=800")+
+lines(density(galaxies,kernel="gaussian",bw=800),col="red")
+
+## ggplot
+Bins = 6 
+Breaks = seq(5000, 35000, length.out = Bins + 1)
+Binwidth = Breaks[2] - Breaks[1]
+ggplot(mydata, aes(x=galaxies)) + 
+  geom_histogram(aes(y=..density..),# Histogram with density instead of count on y-axis
+                 bins = Bins,
+                 binwidth=Binwidth,
+                 colour="black", fill="#ffaa80") +
+  stat_density(kernel='gaussian', bw = 800, fill = NA, col = "red") +
+  labs(title = "ggplot: Gaussian Over Smooth")  # Overlay with transparent density plot
+
+## Kernel = triagular
+
+truehist(galaxies,ymax=0.0002,col="green", main="base R: triangular Over Smooth with bandwidth=800")+
+lines(density(galaxies, kernel="triangular",bw=800),col="red")
+
+## ggplot
+Bins = 6 
+Breaks = seq(5000, 35000, length.out = Bins + 1)
+Binwidth = Breaks[2] - Breaks[1]
+ggplot(mydata, aes(x=galaxies)) + 
+  geom_histogram(aes(y=..density..),# Histogram with density instead of count on y-axis
+                 binwidth=Binwidth,
+                 colour="black", fill="#ffaa80") +
+  stat_density(kernel='triangular', bw = 800, fill = NA, col = "red") +
+  labs(title = "ggplot: triangular Over Smooth")  # Overlay with transparent density plot
+
+
+
+
+
+
+#####
+ truehist(galaxies,ymax=0.0002,col="green", main="base R: Gaussian Over Smooth with bandwidth=100")+
+lines(density(galaxies,kernel="gaussian",bw=100),col="red")
+
+Bins = 6
+Breaks = seq(5000, 35000, length.out = Bins + 1)
+Binwidth = Breaks[2] - Breaks[1]
+ggplot(mydata, aes(x=galaxies)) +
+  geom_histogram(aes(y=..density..),# Histogram with density instead of count on y-axis
+                 binwidth=Binwidth,
+                 colour="black", fill="#ffaa80") +
+  stat_density(kernel='gaussian', bw = 100, fill = NA, col = "red") +
+  labs(title = "ggplot: Gaussian Over Smooth")  # Overlay with transparent density plot
+
+## kernel = Triangular
+
+truehist(galaxies,ymax=0.0002,col="green", main="base R: Triangular Over Smooth with bandwidth=100")+
+lines(density(galaxies,kernel="triangular",bw=100),col="red")
+
+Bins = 6
+Breaks = seq(5000, 35000, length.out = Bins + 1)
+Binwidth = Breaks[2] - Breaks[1]
+ggplot(mydata, aes(x=galaxies)) +
+  geom_histogram(aes(y=..density..),# Histogram with density instead of count on y-axis
+                 binwidth=Binwidth,
+                 colour="black", fill="#ffaa80") +
+  stat_density(kernel='triangular', bw = 100, fill = NA, col = "red") +
+  labs(title = "ggplot: Triangular Over Smooth")  # Overlay with transparent density plot
+
+```
+
+I also wanted to make plot it in the same graph
+
+```{r, warning=FALSE}
+
+## GGplot
+
+Bins = 6 
+Breaks = seq(5000, 35000, length.out = Bins + 1)
+Binwidth = Breaks[2] - Breaks[1]
+ggplot(mydata, aes(x=galaxies)) + 
+  geom_histogram(aes(y=..density..),# Histogram with density instead of count on y-axis
+                 bins = Bins,
+                 binwidth=Binwidth,
+                 colour="black", fill="#ffaa80") + labs(title = "ggplot: Gaussian Over Smooth")+
+  stat_density(kernel='gaussian', bw = 5000, fill = NA, col = "red") +
+  stat_density(kernel='gaussian', bw = 800, fill = NA, col = "#660033")+
+  stat_density(kernel='gaussian', bw = 100, fill = NA, col = "Blue")
+  
+
+  
+  
+## Base.R
+  
+  truehist(galaxies,ymax=0.00035,col="green", main="base R: Gaussian Over various bandwidth")+
+    lines(density(galaxies,kernel="gaussian",bw=5000),col="red")+
+    lines(density(galaxies,kernel="gaussian",bw=800),col="#660033")+
+    lines(density(galaxies,kernel="gaussian",bw=100),col="Blue")
+    
+
+  
+## GGplot
+
+Bins = 6 
+Breaks = seq(5000, 35000, length.out = Bins + 1)
+Binwidth = Breaks[2] - Breaks[1]
+ggplot(mydata, aes(x=galaxies)) + 
+  geom_histogram(aes(y=..density..),# Histogram with density instead of count on y-axis
+                 bins = Bins,
+                 binwidth=Binwidth,
+                 colour="black", fill="#ffaa80") +
+  labs(title = "ggplot: Triangular Over Smooth")+
+  stat_density(kernel='triangular', bw = 5000, fill = NA, col = "red") +
+  stat_density(kernel='triangular', bw = 800, fill = NA, col = "#660033")+
+  stat_density(kernel='triangular', bw = 100, fill = NA, col = "Blue")
+  
+
+  
+  
+## Base.R
+  
+  truehist(galaxies,ymax=0.00035,col="green", main="base R: Triangular Over various bandwidth")+
+    lines(density(galaxies,kernel="triangular",bw=5000),col="red")+
+    lines(density(galaxies,kernel="triangular",bw=800),col="#660033")+
+    lines(density(galaxies,kernel="triangular",bw=100),col="Blue")
+    
+  
+  
+```
+
+Here, I have used kernel density of Gaussian function and triangular function and have used three different bandwidth that is 5000, 800, and 100. With the highest bandwidth, we couldn't see what is happening in the graph. I couldn't see the imprints of clusters. Likewise, when the bandwidth is small, there were too many bumps. We couldn't see what is happening in the graph. For the proper fit of the kernel density, I repeatedly replaced the value of bandwidth and obtained the graph. 
+       
+    
+d) What is your conclusion about the possible existence of superclusters of galaxies? How many superclusters (1, 2, 3, ... )? (Hint: the existence of clusters implies the existence of empty spaces between galaxies.)
+
+
+From the graphs above, we can find the three clusters. However, there can be one more cluster in between the data in the middle. Therefore, I can say that there maybe 3 to 4 clusters.
+
+    
+    
+e) Fit a finite mixture model using  the Mclust() function in R (from the mclust library). How many clusters did it find?  Did it find the same number of clusters as your graphical inspection? Report parameter estimates and BIC of the best model.
+    
+```{r, warning=FALSE}
+library(mclust)
+model <- Mclust(mydata$galaxies)
+summary(model, parameters = TRUE)
+
+plot(model,what="density")+
+title ("Density plot of the finite mixture model")
+
+mclustBIC(galaxies)
+
+```
+
+
+From the Mclust, we find out that there are 4 clusters in the data. Whereas form the density plot, we found there are 3 clusters. Therefore we can say that there are 3 to 4 clusters in the Galaxies data.
+
+
+
+2. (Ex. 8.2 in HSAUR, modified for clarity) The **birthdeathrates** data from **HSAUR3** gives the
+birth and death rates for 69 countries (from Hartigan, 1975).
+
+    a) Produce a scatterplot of the data. Estimate the bivariate density and overlay the corresponding contour plot on the scatterplot.
+    
+```{r, warning=FALSE}
+library(HSAUR3)
+library(KernSmooth)
+library(reshape2)
+library(dplyr)
+data(birthdeathrates, package = "HSAUR3")
+#head(birthdeathrates)
+bd_data <- bkde2D(birthdeathrates, bandwidth = sapply(birthdeathrates, dpik))
+contour(x = bd_data$x1, y = bd_data$x2, z = bd_data$fhat,
+        main = "base R: Countour Scatterplot of Birth_Death_Rates",
+        xlab="Birth Rates", 
+        ylab="Death Rates",
+        xlim =c(0,60), ylim = c(0,35))
+points(birthdeathrates, pch=16, col="red")
+
+
+ggplot(data=birthdeathrates,aes(birth,death)) + 
+  geom_density2d(aes(colour=..level..)) + 
+  scale_colour_gradient(low="green",high="Red") + 
+  theme_bw() +
+  geom_point() +
+   labs(title='ggplot: Countour Scatterplot of Birth_Death_Rates',
+       x='Birth Rate',
+       y='Death Rate') +
+  scale_x_continuous(limits = c(0,60)) +
+  scale_y_continuous(limits = c(0,35))
+
+
+
+
+```
+    
+b) What does the contour plot tell you about the structure of the data?
+
+
+
+Comparing data for birth rates from 10 to about 50 with the death rates, we can tell that the death rate is relatively slow. Also, twice as many people are being born than they are dying (i.e., 2:1 birth to death ratio). 
+       
+    
+c) Produce a perspective plot (persp() in R, ggplot is not required for this question).
+    
+```{r, warning=FALSE}
+
+ persp(x = bd_data$x1, y = bd_data$x2, z = bd_data$fhat,
+xlab = "Birth Rate",
+ylab = "Death Rate",
+zlab = "estimated density",
+theta = -35, axes = TRUE, box = TRUE,main = "Perspective plot for birthdeathrates data",
+col = "#ff99e6")
+
+
+```
+    
+d) Fit a finite mixture model using the Mclust() function in R (from the mclust library).Summarize this model using BIC, classification, uncertainty, and/or density plots.
+    
+```{r, warning=FALSE}
+mod1 <- Mclust(birthdeathrates)
+summary(mod1, parameters = TRUE)
+names(mod1)
+mod1$parameters
+
+# SUmmary: BIC
+summary(mclustBIC(birthdeathrates))
+summary(mod1$BIC)
+#mclustBIC(birthdeathrates)
+
+BIC.data<- as.data.frame(mod1$BIC[,])
+BIC.data$NumComp<-rownames(BIC.data)
+melted.BIC<- reshape2::melt(BIC.data, var.ids= "NumComp")
+
+# plotting for the BIC
+plot(mod1, what='BIC', main = "Base R: Plot of BIC")
+#plot(mclustBIC(birthdeathrates))
+
+ggplot(melted.BIC, aes(x=as.numeric(NumComp), y=value, colour=variable, group=variable))+
+  scale_x_continuous("Number of Components")+
+  scale_y_continuous("BIC")+
+  scale_colour_hue("")+
+  geom_point()+
+  geom_line()+
+  theme_bw() + 
+  labs(title = "ggplot: BIC")
+
+
+# For classification
+summary(MclustDR(mod1))
+plot(mod1, what = 'classification', main = "Base R: classification of plot")
+
+
+# For ggplot
+birthdeathrates %>% mutate(uncertainty = mod1$uncertainty,
+                classification = factor(mod1$classification)) %>% 
+
+ ggplot(aes(birth, death, shape = classification, color = classification)) +
+  geom_point() + 
+  guides(size = guide_legend(), shape = guide_legend()) + theme_classic() +stat_ellipse(level = 0.5, type = "t") + 
+  labs(x = "birth", y = "death", title = "ggplot: Plot of classification")
+
+
+# Uncertainity
+summary(mod1$uncertainty)
+plot(mod1, what = 'uncertainty', main = "Base R: uncertainity of plot")
+
+birthdeathrates %>% mutate(uncertainty = mod1$uncertainty,
+                classification = factor(mod1$classification)) %>% 
+  ggplot(aes(birth, death, size = uncertainty, color = classification)) +
+  geom_point() + 
+  guides(size = guide_legend(), colour = "legend") + theme_classic() +
+  stat_ellipse(level = 0.5, type = "t") + 
+  labs(x = "birth", y = "death", title = "ggplot: Uncertainty")
+
+
+plot(mod1, what = "density", main = "Base R: Density plot")
+ggplot(birthdeathrates, aes(x = birth, y = death)) +
+  geom_point() +
+  geom_density_2d(aes(colour=..level..)) + scale_colour_gradient(low="green",high="Red") +
+  labs ( title = "ggplot: Plot of density")
+
+
+```
+    
+e) Discuss the results in the context of Birth and Death Rates.
+
+
+The results and the graphs shows that there are four clusters, The mean birth of the these clusters are nearly equal to 20,34,44,54. Likewise, the mean death of the clusters are nearly equal to 8.5, 9, 12, and 29.
+      
+    
+
+3. (Ex. 8.3 in HSAUR, modified for clarity) Fit finite mixtures of normal densities individually for each gender in the **schizophrenia** data set from **HSAUR3**. Do your models support the *sub-type model* described in the R Documentation?
+
+    Quote from the R Documentation: *A sex difference in the age of onset of schizophrenia was noted by Kraepelin (1919). Subsequent epidemiological studies of the disorder have consistently shown an earlier onset in men than in women. One model that has been suggested to explain this observed difference is known as the subtype model which postulates two types of schizophrenia, one characterized by early onset, typical symptoms and poor premorbid competence; and the other by late onset, atypical symptoms and good premorbid competence. The early onset type is assumed to be largely a disorder of men and the late onset largely a disorder of women.* (See ?schizophrenia)
+
+```{r, warning=FALSE}
+data("schizophrenia")
+head(schizophrenia)
+ggplot(data = schizophrenia)+
+  stat_density(kernal = "Gaussian", adjust = 1,aes(age,fill = gender))+
+  facet_grid(gender~.) + 
+  labs(title = 'Density plot (gaussian) of Schizophrenia diagnosis data',
+       x = "Diagnosis Age",
+       y='Density Estimate') +
+  scale_fill_manual( values = c("red","blue"))+
+  theme(
+        strip.background = element_blank(),
+        strip.text.y = element_blank(),
+        panel.background = element_blank()
+        )
+
+```
+
+Based on the density plot, we can say that the mean of the age at which the schizophenia starts in 
+male is about 20, Likewise, in female it is throughout the life.
+
+```{r, warning=FALSE}
+ggplot(data = schizophrenia)+
+  geom_histogram(aes(age,fill = gender))+
+  facet_grid(gender~.) + 
+  labs(title = 'Density plot (gaussian) of Schizophrenia diagnosis data',
+       x = "Diagnosis Age",
+       y='Density Estimate') +
+  scale_fill_manual( values = c("red","blue"))+
+  theme(
+        strip.background = element_blank(),
+        strip.text.y = element_blank(),
+        panel.background = element_blank()
+        )
+
+
+```
+
+
+From the histograms, we see that the maximum numbr of men suffered form the disease around the age
+of the 20-35 and less at the age of 60. Whereas, in female the disease suffered from the teens and
+it continuous to the lifetime.
+we can visualize both together and see the same results discussed above by making this plot below:
+
+```{r, warning=FALSE}
+setMen <- subset(schizophrenia, gender=="male")$age
+setWmn <- subset(schizophrenia, gender!="male")$age
+
+par(mfrow=c(1,1))
+hist (schizophrenia$age, xlab="Age", ylab="Density", main="Distribution of Schizophrenia by Age", freq=FALSE, ylim=c(0,.075), border=4)
+lines(density(setMen), col=1, )
+lines(density(setWmn), col=2)
+legend(40, 0.05, legend=c("Female", "Male"),
+       col=c(1,2), lty=c(1,1), cex=0.8)
+
+
+```
+
+
+
+We can subset the schizophrenia data by male and female for fit of model analysis by gender:
+
+```{r, warning=FALSE}
+male <- subset(schizophrenia, gender == "male")
+female <- subset(schizophrenia, gender == "female")
+mod_male <- Mclust(male$age)
+plot(mod_male, what = "BIC")+
+title(main='BIC Of schizophrenia for male')
+
+mod_female <- Mclust(female$age)
+plot(mod_female, what = "BIC")+
+title(main = 'BIC of Schizophenia for female')
+
+cat("Summary for male")
+print(summary(mod_male, parameters = TRUE))
+
+cat("Summary for female")
+print(summary(mod_female, parameters = TRUE))
+
+```
+
+From the model summary above, we can see that the female model showing data points centered at
+about 25 and age 47 of age marks, whereas for males it was at around 20 and 27 years of age 
+(i.e., within 20s). The BIC plot shows that the optimal number of cluster for both males and 
+females is 2.
+
