@@ -1,0 +1,466 @@
+---
+title: "Conceptual question from An Introduction to stastical Learning"
+author: "Yamuna Dhungana"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exercises
+	
+1. Question 2.4.2 pg 52
+
+Explain whether each scenario is a classification or regression problem,
+and indicate whether we are most interested in inference or prediction.
+Finally, provide n and p.
+a.We collect a set of data on the top 500 firms in the US. For each
+firm we record profit, number of employees, industry and the
+CEO salary. We are interested in understanding which factors
+affect CEO salary.
+
+
+  The given scenario is the regression problem because the salary is obtained from the continuous measurement with the other variables.
+  The question is the inference problem since we have to evaluate the effect of the predictor with the response variables.The total no of a sample (n) is 500, and the number of the predictor (p) is 3 (profit, number of employees, industry)
+    
+
+
+b.We are considering launching a new product and wish to know whether it will be a
+success or a failure. We collect data on 20 similar products that were previously 
+launched. For each product we have recorded whether it was a success or failure, 
+price charged for the product, marketing budget, competition price,and ten other 
+variables.
+
+  
+  Since we have the two outcomes success or failure, therefore, it is a binary classification.It is the prediction problem. We will have the dependant and the independent variable that helps in predicting the outcomes. The no of samples (n) is 20, and the number of predictors (p) is 13 (price charged for the product, marketing budget, competition price, and ten other variables).
+
+
+c.We are interested in predicting the % change in the USD/Euro exchange rate in relation
+to the weekly changes in the world stock markets. Hence we collect weekly data for all of 2012. For each week we record the % change in the USD/Euro, the % change in the US market, the % change in the British market,and the % change in the German market.
+
+
+
+  The problem is the regression problem because the percentage change is the continuous measurement. This is the prediction problem.The number of observations (n) is 52 (the number of weeks in 2012 is 52) 
+  The number of predictors (p) is 3 (the % change in the US market, the % change in the British market, and the % change in the German market).
+
+
+2.Question 2.4.4 pg 53
+
+You will now think of some real-life applications for statistical learning.
+a.Describe three real-life applications in which classification might
+be useful. Describe the response, as well as the predictors. Is the
+goal of each application inference or prediction? Explain your
+answer.
+
+
+
+Application 1:
+
+  Analyzing whether it will be a rainy day or a sunny day.The response of this analysis will be rainy or sunny, and the predictors will be temperature, humidity, and windy.
+  The goal is to predict; since we have to predict whether it will be a rainy day or a sunny day. 
+
+
+Application 2:
+
+  Is the newly discovered coronavirus vaccine success or a failure? The response for this project is the vaccine able to develop antibodies or not. The predictor of the project will be age, geographical condition, ethnicity, underlying conditions, control/test group, etc.The goal of the project is to predict.
+
+
+Application 3:
+
+  Analyzing either the person running for the presidency will win or lose.The response for this project is win and loss. The predictor of the project is advertisement, communication, policies, popularity, funding, qualification of candidates, etc. The goal of the project is to predict the outcome of the election.
+
+
+b.Describe three real-life applications in which regression might
+be useful. Describe the response, as well as the predictors. Is the
+goal of each application inference or prediction? Explain your
+answer
+
+
+
+
+Application 1:
+
+  Suppose we want to find the consumption of water in the unites states.We have a certain parameter that we set, G being the water consumption, and the predictors will be no of family, properly installed regulators or drinking lines, environmental temperature, etc. This is the case of inference.
+
+
+Application 2:
+
+  We want to find out the average sale price of the house in the specific area over the next ten years.The average house that will be sold in the for x next year, y the year after, z after that, etc., and the predictor are parking, schools, crime rate, the average income of the family, neighbors, etc. This is the condition of the inference. 
+
+
+Application 3:
+
+  Suppose we want to find out the growth in the number of students in the particular school by 2030. The response of the project is the no of students.The predictor is the performance of students, qualified teachers, extracurricular activities, tuition fees, etc.The above problem is the inference.
+
+
+c.Describe three real-life applications in which cluster analysis
+might be useful.
+
+
+Application 1:
+
+  Suppose we want to Identify the conspiracy theorist on Twitter. For this project, we will be using clustering. Based on the keywords that a person post on his posts, the theorist can be identified. Similar keywords from the posts can be identified from another user as well.The goal in this project will be prediction.
+
+
+Application 2:
+
+  The clustering also can be used to find the product's popularity among the age group. The purchase behavior of the customer can be used for the promotion of this product to a specific age group, target advertisement, new product development.The goal for this is to first find the inferance then predict.
+
+
+Application 3:
+
+  It can be used to cluster mutation of a new strain involved in coronavirus.Here, the response will be the abnormal RNA strain other than the previously found strain. Predictors will be single point mutations, deletion, insertion, duplication, etc.In this case, the Goal will be Prediction.
+
+
+3.Question 2.4.6 pg 53
+
+Describe the differences between a parametric and a non-parametric
+statistical learning approach. What are the advantages of a parametric
+approach to regression or classification (as opposed to a nonparametric
+approach)? What are its disadvantages?
+ 
+
+
+  In a non-parametric model, The complexity of the model increases with the increase of the training data. Whereas, in a parametric model, there are a fixed number of model. In a non-parametric model, the information about the population is unknown. Whereas, In the parametric model, information about the population is known completely.The null hypothesis is free from the parameters in the non-parametric model, and the null hypothesis is made on the parameters of the population distribution.Results for the non-parametric model cannot be significantly affected by the outliers. However, the results of the parametric model can be significantly affected by the outliers.
+
+
+Advantage of parametric models:
+ 
+  1. It requires less data for training the data.
+  2. It is simpler model and easy to understand.
+
+Disadvantage of parametric models:
+
+  1. The size of the sample is always big that makes difficult to carry the 
+    whole test.
+  2. The result get affected by the outliers.
+
+Advantage of non-parametric models:
+
+  1. Assumption of the distribution is not required.
+  2. This model is applicable to all kind of data.
+
+
+Disadvantage of non-parametric models:
+
+  1. This model is less effective than the parametric model.
+    
+  2. It takes more data to train data and longer time to train data.
+
+
+4.Question 2.4.8 pg 54-55 (skip Part b. For Part a -'College' can be found in the `ISLR` library).
+
+This exercise relates to the College data set, which can be found in
+the file College.csv. It contains a number of variables for 777 different
+universities and colleges in the US. The variables are
+• Private : Public/private indicator
+• Apps : Number of applications received
+• Accept : Number of applicants accepted
+• Enroll : Number of new students enrolled
+• Top10perc : New students from top 10% of high school class
+• Top25perc : New students from top 25% of high school class
+• F.Undergrad : Number of full-time undergraduates
+• P.Undergrad : Number of part-time undergraduates
+• Outstate : Out-of-state tuition
+• Room.Board : Room and board costs
+• Books : Estimated book costs
+• Personal : Estimated personal spending
+• PhD : Percent of faculty with Ph.D.’s
+• Terminal : Percent of faculty with terminal degree
+• S.F.Ratio : Student/faculty ratio
+• perc.alumni : Percent of alumni who donate
+• Expend : Instructional expenditure per student
+• Grad.Rate : Graduation rate
+Before reading the data into R, it can be viewed in Excel or a text
+editor.
+
+a.Use the read.csv() function to read the data into R. Call the
+loaded data college. Make sure that you have the directory set
+to the correct location for the data.
+
+```{r,echo=FALSE}
+#library(ISLR)
+#data(College)
+college <- read.csv("https://raw.githubusercontent.com/yamunadhungana/data/master/College.csv", header = TRUE, sep = ",")
+#head(College)
+#getwd() # I have the correct working directory
+dim(college)
+
+```
+     
+  I am currently working in the correct working directory. For setting the current  working directory. We can use the a code
+     
+  `setwd(C:/Users/Yamuna/Documents/Acamedic_materials/STAT_602/Week_2/Homework)`
+
+
+(c)
+
+i.Use the summary() function to produce a numerical summary
+of the variables in the data set.
+
+
+  I have used loop in this question to see the summaries of the variables because it saves the time. Since, I do not need to write the name of the variable.
+        
+```{r,echo=FALSE}
+# For the summary of the variables
+
+for (i in 1:dim(college)[2]){
+  message("The summary of: ", names(college)[i])
+  print(summary(college[,i]))}
+
+```
+
+ii.Use the pairs() function to produce a scatterplot matrix of
+the first ten columns or variables of the data. Recall thatyou 
+can reference the first ten columns of a matrix A using A[,1:10].
+
+```{r,echo=FALSE}
+## scatterplot matrix of the first ten columns
+#par(family = "sans", font = 2)
+pairs(college[, c(1:10)],
+      col = 2,
+      pch = 16,
+      cex = 0.8)
+
+# library(GGally)
+# ggpairs(college[,1:10])
+
+```
+     
+     
+  From the scatter plot we can see the linear and the quadratic relationship among the variables. Variables such as between F.Undergard vs Enroll, Accept vs Enroll, Apps vs Accept etc and the variables Outstate vs Room.Board have the positive relationship. The variables Top10Perc vs Top25Perc has quadratic relationship.    
+     
+        
+iii.Use the plot() function to produce side-by-side boxplots of
+Outstate versus Private.
+
+```{r,echo=FALSE}
+
+par(font = 2)
+layout(matrix(1))
+plot(
+  Outstate ~ Private,
+  data = college,
+  col = "gray",
+  pch = 16,
+  cex = 0.7,
+  outcol = c(3, 2),
+  xlab = "Status of Private",
+  ylab = "Out of state tuition",
+  border = c(3, 2)
+)
+box(
+  which = "plot",
+  lty = 1,
+  lwd = 2,
+  col = "gray"
+)
+
+library(ggplot2)
+qplot(
+  college$Private,
+  college$Outstate,
+  xlab = "Private University",
+  ylab = "Out of State tuition",
+  main = "Outstate Tuition Plot",
+  geom = "boxplot"
+)
+
+```
+     
+  The plot shows that the the out of state tution is higher in the private colleges than the public colleges. Public college has lower tuition compared to the private college.
+     
+
+iv.Create a new qualitative variable, called Elite, by binning the Top10perc variable. We are going to divide universities into two groups based on whether 
+or not the proportion of students coming from the top 10% of their high school
+classes exceeds 50%.
+> Elite =rep ("No",nrow(college ))
+> Elite [college$Top10perc >50]=" Yes"
+> Elite =as.factor (Elite)
+> college =data.frame(college ,Elite)
+
+Use the summary() function to see how many elite universities there are. Now use 
+the plot() function to produce side-by-side boxplots of Outstate versus Elite.
+
+```{r,echo=FALSE}
+# Dividing the universities inti two groups based on whether or not
+# the proportion of studenrs coming foem the top 10% of their high school
+# exceeds 50% .
+Elite = rep("No", nrow(college))
+Elite[college$Top10perc > 50] = " Yes"
+Elite = as.factor(Elite)
+college = data.frame(college , Elite)
+
+# using summary
+summary(college$Elite)
+
+# boxplot
+par(font = 2)
+plot(
+  Outstate ~ Elite,
+  data = college,
+  col = "gray",
+  pch = 16,
+  cex = 0.7,
+  outcol = c(3, 2),
+  xlab = "Status of Elite",
+  ylab = "Out of state tuition",
+  border = c(3, 2)
+)
+
+box(
+  which = "plot",
+  lty = 1,
+  lwd = 2,
+  col = "gray"
+)
+
+qplot(
+  college$Elite,
+  college$Outstate,
+  xlab = "Elite University",
+  ylab = "Out of State tuition in USD",
+  main = "Outstate Tuition Plot",
+  geom = "boxplot"
+)
+
+```
+     
+  The summary of the data shows that 78 of the colleges out of 777 colleges falls under the elite group whereas, 699 do not fall under the elite group. From the figure, we can see that the out-of-state tuition is much higher for elite universities. Also, the first quartile of the elite university with the out-of-state tuition is higher than the third quartile. 
+     
+     
+     
+    
+v.Use the hist() function to produce some histograms with differing numbers of bins for a few of the quantitative variables.You may find the command par(mfrow=c(2,2)) useful:it will divide the print window into four regions so that four plots can be made simultaneously. Modifying the arguments to this function will divide the screen in other ways.
+
+```{r,echo=FALSE}
+making_Hist = function(varName) {
+  par(font = 2)
+  layout(matrix(1:4, ncol = 2)) # divide print window into 2x2 region
+  breaks = c(5, 10, 20, 40)
+  varIndex = which(names(college) == varName)
+  for (i in 1:length(breaks)) {
+    hist(
+      college[, varIndex],
+      breaks = breaks[i],
+      col = varIndex,
+      main = paste("college data: Histogram of", names(college)[varIndex]),
+      sub = paste("number of breaks: ", breaks[i]),
+      xlab = varName
+    )
+    box(which = "plot",
+        lty = 1,
+        col = "black")
+  }
+  layout(matrix(1)) ## return to the original plot setting
+}
+
+making_Hist("Books")
+making_Hist("PhD")
+making_Hist("Grad.Rate")
+making_Hist("Enroll")
+
+# par(font = 2)
+# qplot(college$Books, xlab = "Books", ylab = "Count")
+# qplot(college$PhD, xlab = "PhD", ylab = "Count")
+# qplot(college$Grad.Rate, xlab = "Grad Rate", ylab = "Count")
+# qplot(college$perc.alumni, xlab = "% alumni", ylab = "Count")
+
+
+```
+     
+    
+  From the plot above, it shows that the cost of the book is normally distributed with the long right tail. The property of the distribution is not distinguishable with the break = 5. The distribution visible in break 20 and 10. From the plot named Histogram of Ph.D., it seems the data is mostly left-skewed. We also can know that most of the colleges do have the Ph.D. faculty in their college.
+  The histogram is named grad rate shows that the graduation rate is normally distributed. Likewise, The histogram of enrollment shows that the enrollment seems exponentially distributed.
+
+
+vi.Continue exploring the data, and provide a brief summary
+of what you discover.
+
+
+```{r,echo=FALSE}
+
+# I want to check the distribution of acceptance rate
+college$acceptance_rate = 100 * (college$Accept / college$Apps)
+making_Hist("acceptance_rate")
+
+# Finding the different relationship
+
+# Enroll vs Out of state cost
+plot(
+  Enroll ~ Outstate,
+  data = college,
+  pch = 19,
+  col = 4,
+  cex = 0.6
+)
+add.smooth = smooth.spline(college$Outstate, college$Enroll)
+lines(add.smooth, lwd = 3, col = 2)
+
+# Apps vs Out of state cost
+plot(
+  Apps ~ Outstate,
+  data = college,
+  pch = 19,
+  col = 4,
+  cex = 0.6
+)
+add.smooth = smooth.spline(college$Outstate, college$Apps)
+lines(add.smooth, lwd = 3, col = 2)
+
+# Enroll vs Expenditure
+plot(
+  Enroll ~ Expend,
+  data = college,
+  pch = 19,
+  col = 4,
+  cex = 0.6
+)
+add.smooth = smooth.spline(college$Expend, college$Enroll)
+lines(add.smooth, lwd = 3, col = 2)
+
+# Apps vs PhD
+plot(
+  Apps ~ PhD,
+  data = college,
+  pch = 19,
+  col = 4,
+  cex = 0.6
+)
+add.smooth = smooth.spline(college$PhD, college$Apps)
+lines(add.smooth, lwd = 3, col = 2)
+
+# Enroll vs PhD
+plot(
+  Enroll ~ PhD,
+  data = college,
+  pch = 19,
+  col = 4,
+  cex = 0.6
+)
+add.smooth = smooth.spline(college$PhD, college$Enroll)
+lines(add.smooth, lwd = 3, col = 2)
+
+# Grad.Rate vs PhD
+plot(
+  Grad.Rate ~ PhD,
+  data = college,
+  pch = 19,
+  col = 4,
+  cex = 0.6
+)
+add.smooth = smooth.spline(college$PhD, college$Grad.Rate)
+lines(add.smooth, lwd = 3, col = 2)
+
+
+```
+    
+  I wanted to check the distribution of acceptance rate for the application, so I generated the variable `acceptance_rate` by dividing the acceptance of application by the no of application and multiplying the function with 100.
+  The histogram of the acceptance rate shows that the data is skewed to the left with the long and heavy tail towards the right. I also wanted to know how the cost affects the other variables. So, the graph shows that the out of state tuition cost does not affect much the number of application.Additionally, I also wanted to see if the Ph.D. faculties help in the application rates. From the graphs, it is visible that there is no such relation between the application and the Ph.D. faculties. Further, I also wanted to see the enrollment and the graduation rate for the Ph.D. students. It has the positive relationship between the graduation rate and the enrollment with Ph.D. 
+
+
+
+
+
+
