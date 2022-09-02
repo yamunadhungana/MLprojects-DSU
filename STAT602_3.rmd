@@ -1,0 +1,347 @@
+---
+title: "Modern Applied Statistics exercises from ISLR"
+author: "Yamuna Dhungana"
+output:
+   pdf_document:
+     latex_engine: xelatex
+  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,warning=F,message=F)
+```
+
+
+**Libraries required for the assignment**
+
+```{r}
+library(ISLR)
+library(ggplot2)
+library(GGally)
+
+```
+
+
+## Exercises (ISLR)
+
+1. Question 4.7.1 pg 168
+Using a little bit of algebra, prove that (4.2) is equivalent to (4.3). In other words, the logistic function representation and logit representation for the logistic regression model are equivalent
+
+
+$$P(X) = \frac{e^{\beta_0+\beta_1X}}{1+e^{\beta_0+\beta_1X}}.$$ 
+
+$$P(X) + P(X)(e^{\beta_0+\beta_1X}) - e^{\beta_0+\beta_1X} = 0$$
+
+$$P(X)(e^{\beta_0+\beta_1X}) - e^{\beta_0+\beta_1X} = - P(X)$$
+
+
+$$e^{\beta_0+\beta_1X}(P(X)-1) = - P(X)$$
+
+$$e^{\beta_0+\beta_1X} = \frac{-P(X)}{P(X)-1}$$
+
+$$e^{\beta_0+\beta_1X} = \frac{P(X)}{1-P(X)}$$   
+
+Hence proved.
+
+
+2. Question 4.7.10(a-d) pg 171
+This question should be answered using the Weekly data set, which is part of the ISLR package. T
+his data is similar in nature to the Smarket data from this chapter’s lab, except that it contains
+1, 089 weekly returns for 21 years, from the beginning of 1990 to the end of 2010.
+
+a. Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
+
+
+```{r,echo=FALSE,warning=FALSE}
+
+data("Weekly")
+# head(Weekly)
+# names(Weekly)
+
+
+# for the numerical summary
+summary(Weekly)
+
+# corelation of the data
+cor(Weekly[,-9])
+
+# from the correlation we found out that Volume and year are highly correlated
+
+
+# pairs(Weekly)
+ggpairs(Weekly)
+
+plot(Weekly$Volume ~ Weekly$Year, 
+     main = "Volume vs Year",
+     xlab = "Year",
+     ylab = "Volume"       )
+plot(Weekly$Volume, 
+     data = Weekly, 
+     ylab = "Volume",
+     main = "Scatterplot for Volume")
+qplot(Weekly$Volume, 
+      data = Weekly,
+      xlab = "Volume",
+      main = "qplot for Volume")
+
+
+```
+
+  The correlation of the data 'weekly' shows a strong correlation between the volume and the year. However, other variables have no such strong correlation. Further, the variable year and volume are visualized. From the year and volume plot, it seems like there is a gradual exponential increase from the year 1995 to 2004.  For the following years, the volume increases with the year, slightly decreasing in 2010.
+
+
+
+
+b. Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
+
+```{r,echo=FALSE,warning=FALSE}
+fit_log <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Weekly,
+               family = binomial)
+summary(fit_log)
+
+```
+
+  Based on the summary of the model, it appears the only lag2 is statistically significant with the p-value of 0.0296 at P<0.05. The estimated coefficient of lag2 is 0.05844 that means, when the other predictors in the model are constant, we would expect a mean increase in log odds as the stock market goes up by the unit increase in lag2. Other than this, the deviance residual of the model shows that the data is positively skewed. 
+
+
+c. Compute the confusion matrix and overall fraction of correct predictions. Explain what the confusion matrix is telling you about the types of mistakes made by logistic regression.
+
+
+```{r,echo=FALSE,warning=FALSE}
+
+# # library(caret)
+# # pred_data <- predict()
+# 
+# # pred_data <- predict(fit_log, type = "response")
+# # pred.glm <- rep("Down", length(pred_data))
+# # pred.glm[pred_data > 0.5] <- "Up"
+# # table(pred.glm, Direction)
+
+do.confusion=function(Th.hold,model,data){
+  preds=rep("Down",dim(data)[1])
+  vals=predict(model,newdata=data,type="response")
+  for(i in 1:dim(data)[1]){
+    if(vals[i]>=Th.hold){
+      preds[i]="Up"
+    }
+  }
+  ## Confusion matrix
+  print("Confusion Matrix:")
+  con=table(preds,data$Direction)
+  print(con)
+  
+}
+do.confusion(0.5,fit_log,Weekly)
+
+```
+   
+   The confusion matrix revealing out correct and the wrong prediction for the model. According to this matrix, we have four different factors: True positive, True negative, False positive, and False-negative. True positive and true-negative are those which we predicted correctly. However, false positives and false negatives are those which we predicted incorrectly. In our confusion matrix, our correct prediction of the model for the direction up and down are 557 and 54 respectively. The value 48 is the false positive which means we predicted it as up but, the direction of those data was down. The value 430 is a false negative which means we predicted it as down but, the direction of those data was up.
+   Additionally, we can also compute test error form the matrix. From the matrix `(54+556)/1089`
+percentage of the correct prediction is `56.10%.` We also can say that the if the model goes up our model will be correct at `557/48+557` 92.06%. Whereas, as the model goes down, our model will be correct at `54/54+430` i.e. 11.15%.
+
+
+
+d. Now fit the logistic regression model using a training data period from 1990 to 2008, with 
+Lag2 as the only predictor. Compute the confusion matrix and the overall fraction of correct predictions for the held out data (that is, the data from 2009 and 2010.
+
+```{r,echo=FALSE,warning=FALSE}
+
+new_data <- c(which(Weekly$Year==2009), which(Weekly$Year==2010))
+test_data <- Weekly[new_data,]
+train <- Weekly[-new_data,]
+fit_log2 <- glm(Direction~ Lag2, data = train, family= binomial)
+summary(fit_log2)
+
+
+
+ summary(test_data$Direction)
+
+# For confusion matrix
+
+do.confusion(0.5,fit_log2,Weekly)
+
+```
+  
+  In our model, we have 43 of the total data down and 61 of the data up.In our confusion matrix, our correct prediction of the model for the direction up and down are 580 and 32 respectively. The value 25 is the false positive which means we predicted it as up but, the direction of those data was down. The value 452 is a false negative which means we predicted it as down but, the direction of those data was up.
+  Additionally, we can also compute test error form the matrix. From the matrix `(32+580)/1089` percentage of the correct prediction is `56.19%.` We also can say that the if the model goes up our model will be correct at `580/25+580` 95.86%. Whereas, as the model goes down, our model will be correct at `32/32+580` i.e. 5.22%.
+
+
+
+
+3. Question 4.7.11(a,b,c,f) pg 172
+11. In this problem, you will develop a model to predict whether a given car gets high or low gas mileage based on the Auto data set.
+
+a. Create a binary variable, mpg01, that contains a 1 if mpg contains a value above its median, and a 0 if mpg contains a value below its median. You can compute the median using the median()
+function. Note you may find it helpful to use the data.frame() function to create a single data set containing both mpg01 and the other Auto variables.
+
+```{r,echo=FALSE,warning=FALSE}
+library(ISLR)
+data(Auto)
+mpg01 <- rep(NA,dim(Auto)[1])
+med_ian <- median(Auto$mpg)
+mpg01 = ifelse(Auto$mpg<med_ian,0,1)
+my_data = as.data.frame(cbind(Auto, mpg01))
+head(my_data)
+
+```
+
+
+b) Explore the data graphically in order to investigate the association between mpg01 and the other features. Which of the other features seem most likely to be useful in predicting mpg01? Scatterplots and boxplots may be useful tools to answer this question.
+Describe your findings.
+
+
+```{r,echo=FALSE,warning=FALSE}
+# for selecting only the required variables 
+ 
+v <- c(2,3,4,5,6,7,8)
+layout(matrix(1:4,nrow = 2))
+for (i in v){
+   boxplot(my_data[,i] ~ my_data$mpg01,
+          col = rainbow(7), 
+          xlab="mpg01", 
+          ylab= names(my_data)[i], 
+          main= paste0("Box plot for the mpg01 and ", names(my_data)[i])
+          )
+}
+
+ 
+newdf <- my_data[,c(2,3,4,5,6,7,8,10)] # excluding mpg and names from my_data
+plot(newdf,pch=16,cex=0.9,col=2)
+
+# correlation of data
+cor(newdf)
+
+# plot for horsepower and displacement
+plot(horsepower ~ displacement,
+     Auto,
+     pch=16,
+     cex=0.8,
+     col=2, 
+     main = "Horsepower vs Displacement")
+
+library(ggplot2)
+library(GGally)
+#pairs(newdf) #pairwise correlation
+ggpairs(newdf,cardinality_threshold = 15)#ggpairs
+# str(newdf)
+
+```
+
+  From the box plot, it is clear that there is a clear distinction between the distribution in two groups for the variables cylinders, horsepower, displacement weight, origin, and year. We also can notice that most of the automobiles were originated in Japan. US-based cars are mostly condensed at lower mpg, whereas European and Japanese cars tend to be well distributed. Also, older cars tend to have lower mpg, and modern cars tend to have higher.Also, older cars tend to have lower mpg, and modern cars tend to have higher. From the correlation plot, it looks like the physical quantities of the car are highly correlated.The displacement and the horsepower look to have an exponential relationship.
+
+
+c. Split the data into a training set and a test set.
+
+```{r,echo=FALSE,warning=FALSE}
+library(caTools)
+sample.split(my_data,SplitRatio = 0.70)-> mysplit
+subset(my_data,mysplit==T)->train
+subset(my_data,mysplit==F)->test
+#dim(train)
+
+```
+
+   We splitted the data in the ration of 70% and 30% .
+
+f. Perform logistic regression on the training data in order to predict mpg01 using the 
+variables that seemed most associated with mpg01 in (b). What is the test error of the model obtained?
+
+```{r,echo=FALSE,warning=FALSE}
+fit.log3 <- glm(mpg01 ~ cylinders + weight + displacement + horsepower, data = train, family = binomial)
+summary(fit.log3)
+
+# test error
+
+test.err=function(cutoff,model,test){
+  preds=rep(0,dim(test)[1])
+  probs=predict(model,newdata=test, type="response")
+  for(i in 1:length(probs)){
+    if(probs[i]>=cutoff){
+      preds[i]=1
+    }
+  }
+  cm=table(preds, test$mpg01)
+  message("Confusion Matrix:");print(cm)
+  ac=((cm[1,1]+cm[2,2])/sum(cm))*100
+  message("Overall test accuracy (percentage) : ", round(ac,2))
+  paste0("Test error (percantage): ",round((100-ac),2))
+  
+}
+
+test.err(0.5,fit.log3, test)
+
+
+```
+
+
+  From question b, we had found that cylinders, weight, displacement, horsepower were mostly    associated with the variable mpg01. Hence, we have performed logistic regression with these   variables. For the computed model, we found out that the weight and the horsepower are statistically significant. Also, the data is of the model is negatively skewed. 
+  For the test accuracy, I have computed the confusion matrix and then found the accuracy of the model and the test error. The confusion matrix shows that we were able to predict 88.14% of the data correctly. Likewise, we predicted 11.86 % of the data incorrectly.Therefore, we have 11.86% as the test error. 
+
+
+4. Write a reusable function in RMD that calculates the misclassification rate, sensitivity, and specificity, and return a table similar to `Table 4.7`. Call this function `misclass.fun.*`, replacing `*` with your initials. The arguments for this function are a threshold, predicted probabilities, and original binary response data. Test your function using the data and model from 4.7.10 b) with threshold values of `c(0.25, 0.5, 0.75)`. 
+
+  Post any questions you might have regarding this on the discussion board. Define `misclass.fun.*` using the `function()` command. Open code that is not using `function()` will not be graded. We will calculate misclassification rates frequently this semester, so take care that you write a reusable function in order to save time this semester. \textit{Show the function code you wrote in your final write-up using} `echo = T`.
+    
+```{r,echo=TRUE,warning=FALSE}
+
+# thd <- 0.75
+misclass.fun.yd <- function(thd, pred_prob, original_res){
+  predicted=rep("Down",length(original_res))
+  vals <- pred_prob
+  for(i in 1:length(original_res)){
+    if(vals[i]>=thd){
+      predicted[i]="Up"
+    }
+  }
+   con.mat = table(predicted, original_res) # creating confusion matrix
+    # since all the pred values for threshold 0.25 are less than 0.25 therefore we only
+   # have 1 row as the confusion matrix therefore checking the row
+   if(length(con.mat)==2){ 
+      MCR = mean(predicted != original_res) #misclassification rate
+      SEN = con.mat[1, 2] / sum(con.mat[1,]) # sensitivity
+      SPEC = con.mat[1, 1] / sum(con.mat[1,]) # specificity
+    }else{
+      MCR = (con.mat[1, 2] + con.mat[2, 1]) / sum(con.mat) # misclassification rate
+      SEN = con.mat[2, 2] / (con.mat[2, 2] + con.mat[1, 2]) # sensitivity
+      SPEC = con.mat[1, 1] / (con.mat[1, 1] + con.mat[2, 1]) # specificity
+      }
+
+  
+   return(list(
+    Misclassification_Rate = MCR,
+    Sensitivity = SEN,
+    Specificity = SPEC
+  ))
+
+}
+
+pred_prob<- predict(fit_log, newdata = Weekly, type ="response") # model form the q 4.7.10(b)
+original_res <- Weekly$Direction
+
+at_0.25threshold <- misclass.fun.yd(0.25,pred_prob,original_res)
+at_0.5threshold <- misclass.fun.yd(0.5,pred_prob,original_res)
+at_0.75threshold <- misclass.fun.yd(0.75,pred_prob,original_res)
+
+
+library(knitr)
+finaltable <- as.data.frame(cbind(at_0.25threshold, at_0.5threshold, at_0.75threshold))
+knitr::kable(finaltable, digits = 3,
+             caption = "Different measure of accuracy with different threshold")
+
+
+
+```
+    
+```{r,echo=FALSE,warning=FALSE}
+
+# https://www.jigsawacademy.com/sensitivity-vs-specificity-in-logistic-regression/
+# https://medium.com/analytics-vidhya/a-guide-to-machine-learning-in-r-for-beginners-part-5-4c00f2366b90
+# https://bookdown.org/yihui/rmarkdown-cookbook/kable.html
+# https://www.theanalysisfactor.com/sensitivity-and-specificity/
+# https://www.datamentor.io/r-programming/if-else-statement/
+# https://stackoverflow.com/questions/46028360/confusionmatrix-for-logistic-regression-in-r
+# https://stats.stackexchange.com/questions/65244/how-to-determine-the-accuracy-of-logistic-regression-in-r
+
+
+```
+    
