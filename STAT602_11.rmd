@@ -1,0 +1,476 @@
+---
+title: "Modern Applied Statistics exercises from ISLR"
+author: "Yamuna Dhungana"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,warning=F,message=F)
+```
+
+
+### Use set.seed(202111) when appropriate to make results reproducible.
+
+1. (Modified from 8.1 pg 201 in **Modern Data Science with R**.) The ability to get a good night's sleep is correlated with many positive health outcomes. The `NHANES` data set contains a binary variable `SleepTrouble` that indicates whether each person has trouble sleeping. For each of the listed models -  Logistic Regression, Neural network, K - Nearest Neighbors, LDA, and QDA, repeat all of the following steps:
+
+a) Using the Validation Set Approach with a split of 90/10, build a classifier for `SleepTrouble` on the training data. You will have to use a subset of the variables.
+    
+b) Report its effectiveness on the test data.
+    
+c) Make an appropriate visualization of the model.
+    
+d) Interpret the results. What have you learned about people's sleeping habits?
+
+
+## Data Exploration:
+
+   *The data NHANES had 76 columns with 10000 rows with NA values. Firstly, I have selected variables using the stepwise function for each group of data. The NHANES data has different sub-groups like demographic variables, physical measurement, health variables, lifestyle variables. With each subgroup of variables excluding some variables which does not has compete information, I ran stepwise regression using the 'olsrr' package using the ols_step_forward_p (model) function for each group. The selected variables are the result of the stepwise regression that I chose based on C(p). (I did not include the code but could provide one).*
+
+```{r}
+library(dplyr)
+library(NHANES)
+library(caTools)
+library(neuralnet)
+library(ROCR)
+library(pROC)
+data("NHANES")
+
+original <- (NHANES)
+
+# subsetting the data
+
+# mydata <- original %>% 
+#   select(SleepTrouble,HHIncome, Age, BMI, MaritalStatus,                          DaysPhysHlthBad,Depressed, AlcoholDay, SmokeNow, PhysActive, HardDrugs)%>%
+#   na.omit()
+
+
+mydata <- subset(original, select = c(SleepTrouble,HHIncome, Age, BMI, MaritalStatus,                          DaysPhysHlthBad,Depressed, AlcoholDay, SmokeNow, PhysActive, HardDrugs))
+mydata <- na.omit(mydata)
+
+dim(mydata)
+
+# changing the character variables into numeric
+# mydata$SleepTrouble <- as.numeric(mydata$SleepTrouble)
+
+# Changing the numeric code in binary
+ 
+sleeptrouble <- rep(NA,dim(mydata)[1])
+sleeptrouble = ifelse(mydata$SleepTrouble=="Yes",1,0)
+mydata = as.data.frame(cbind(mydata, sleeptrouble))
+finaldata <- subset(mydata, select = - SleepTrouble)
+finaldata[,c(1,4,6,8:10)] <- sapply(finaldata[,c(1,4,6,8:10)], as.numeric)
+ 
+```
+
+## Splitting data into test and train
+
+  *The data is divided in a 9 to 1 ratio.90% of the data is train data and 10% of the data is in the test data. I have applied this ratio to all the classifiers.*
+
+```{r}
+# splitting data into training and test in to ratio of 90/10
+
+set.seed(202111)
+index = sample.split(finaldata$sleeptrouble, SplitRatio = 0.9)
+train.orig = subset(finaldata, index == TRUE)
+test.orig = subset(finaldata, index == FALSE)
+paste0("size of Training data")
+dim(train.orig)
+paste0("size of Testing data")
+dim(test.orig)
+
+```
+
+
+## [1] Logistic Regression:
+
+```{r}
+
+############### Logistic regression #########
+model.log <- glm(sleeptrouble~., data = train.orig, family = binomial)
+summary(model.log)
+
+test.err=function(cutoff,model,test){
+  preds=rep(0,dim(test)[1])
+  probs=predict(model,newdata=test, type="response")
+  for(i in 1:length(probs)){
+    if(probs[i]>=cutoff){
+      preds[i]=1
+    }
+  }
+  cm=table(preds, test$sleeptrouble)
+  message("Confusion Matrix:");print(cm)
+  ac=((cm[1,1]+cm[2,2])/sum(cm))*100
+  message("Overall test accuracy (percentage) : ", round(ac,2))
+  Test_error <- round((100-ac),2)
+  paste0("Test error (percantage): ",Test_error)
+  Modelacc <-  round((cm[1,1]+cm[2,2])/sum(cm)*100,2)
+  print("Model Accuracy (Percentage):")
+  print(Modelacc)
+  print("True Positive Rate, TPR (percentage):")
+  TPR <- round(cm[2,2]/(cm[2,2]+cm[1,2])*100,2)
+  print(TPR)
+  print("False Postive Rate, FPR (percentage):")
+  spec=cm[1,1]/(cm[1,1]+cm[2,1])*100
+  FPR <- round((100-spec),2)
+  print(FPR)
+  return(as.data.frame(rbind(accuracy = ac,TPR,FPR)))
+  
+  
+}
+
+acc.log <- test.err(0.5,model.log, test.orig)
+colnames(acc.log) <- "Rate"
+acc.log
+
+
+############ Accuracy ############
+
+log.prediction <- predict(model.log, test.orig)
+MSE.log <- mean((log.prediction - test.orig$sleeptrouble)^2)
+
+
+paste0("MSE of the logistic model is ",round(MSE.log, digits = 3))
+
+
+
+###############visualizatation ############
+
+par(mfrow=c(1, 2))
+plot(model.log)
+
+
+####### ROC##############
+
+# will be required in question 2
+
+test_prob =  predict(model.log, test.orig, type = "response")
+test_roc = roc(test.orig$sleeptrouble ~ test_prob, plot = TRUE, print.auc = TRUE)
+
+```
+
+
+   *The logistic regression shows that among all the variables, the total annual gross income and total alcohol consumed in a day are statistically significant at 0.05. Likewise, physical health was bad in a month, depression and hard drugs were highly significant and smoking was also statistically significant. I have also drawn the confusion matrix. It shows that (117+9) 126 of the 185 data was predicted correctly, and (50+9) 59 of the total data was predicted falsely.*
+
+   *The accuracy of the model was 68.11%, the true positive rate was 15.25% and the false-positive rate was 7.14%. I have also calculated the MSE of the model, which is 1.80.*
+
+   *From the analysis of the logistic regression, I came to know that sleep has been affected positively or negatively affected by bad physical health, depression, alcohol consumption, income, hard drugs, and smoking has a significant effect on the sleep of the individual.*
+   
+  *The AUC of the model is 0.580 which is considered bad*
+   
+
+## [2] Neural network
+
+   *Here I have fit the neural network with the same data that I chose for the previous model with the package neuralnet. I scaled the data, then split the data into train and the test. I fit the model with the hidden layer of two and to produce the reproducibility I have used set.seed as 202111.*
+
+```{r}
+# install.packages("neuralnet")
+library(neuralnet)
+
+finaldata[,c(1,4,6,8:10)] <- sapply(finaldata[,c(1,4,6,8:10)], as.numeric)
+
+# Scale data for neural network
+max = apply(finaldata , 2 , max)
+min = apply(finaldata, 2 , min)
+scaled = as.data.frame(scale(finaldata, center = min, scale = max - min))
+
+# creating training and test set
+trainNN = scaled[index , ]
+testNN = scaled[-index , ]
+
+set.seed(202111)
+NN = neuralnet(sleeptrouble~., trainNN, hidden = 2 ,act.fct = "logistic", linear.output = F,lifesign = "minimal")
+
+
+## Prediction using neural network
+
+predict_testNNn =as.vector(predict(NN, testNN[,c(1:10)]))
+predict_testNN = (predict_testNNn * (max(finaldata$sleeptrouble) - min(finaldata$sleeptrouble))) + min(finaldata$sleeptrouble)
+
+
+# Calculate Mean Square Error (RMSE)
+# RMSE.NN = (sum((testNN$sleeptrouble - predict_testNN)^2) / nrow(testNN)) ^ 0.5
+MSE.nn = mean((testNN$sleeptrouble - predict_testNN)^2)
+
+paste0("MSE of the Neural network is ",round(MSE.nn, digits = 3))
+
+
+```
+
+   
+
+```{r, cache = TRUE}
+
+# plot neural network
+plot(NN, cex = 0.8,rep = "best")
+
+
+# plot( predict_testNN, testNN$sleeptrouble,col='blue', pch=16, ylab = "predicted speeptrouble NN", xlab = "real sleeptrouble")+
+# abline(0,1)
+
+
+test_prob.nn = as.vector(predict(NN, testNN, type = "response"))
+test_roc.nn = (roc(testNN$sleeptrouble ~ test_prob.nn, plot = TRUE, print.auc = TRUE))
+
+```
+
+   
+   *The MSE of the neural network is 0.187. I have further plotted the ROC curve, which determines how well our classifier worked. From the ROC curve, we see that the AUC of the model is 0.705, and is the highest of all the models built. However, we can say that the model has also predicted quite a large FPR. That is why we still have an AUC score that is not quite better. The figure of the neural network showed that the model is the forward propagation, and has 2 hidden layers. The model that we fit has an MSE of 0.18, which is less and is more appropriate. Also, the predictors that we fit contribute to sleep trouble.*
+
+
+## [3] K - Nearest Neighbors
+
+```{r}
+library(class)
+
+# Finction for accuracy
+
+do.confusionknn =function(model,trues){
+  cm=table(model, trues)
+  message("Confusion Matrix:");print(cm)
+  ac=((cm[1,1]+cm[2,2])/sum(cm))*100
+  message("Overall test accuracy (percentage) : ", round(ac,2))
+  Test_error <- round((100-ac),2)
+  paste0("Test error (percantage): ",Test_error)
+  Modelacc <-  round((cm[1,1]+cm[2,2])/sum(cm)*100,2)
+  print("Model Accuracy (Percentage):")
+  print(Modelacc)
+  print("True Positive Rate, TPR (percentage):")
+  TPR <- round(cm[2,2]/(cm[2,2]+cm[1,2])*100,2)
+  print(TPR)
+  print("False Postive Rate, FPR (percentage):")
+  spec=cm[1,1]/(cm[1,1]+cm[2,1])*100
+  FPR <- round((100-spec),2)
+  print(FPR)
+  return(as.data.frame(rbind(accuracy = ac,TPR,FPR)))
+  
+}
+
+
+
+final.knn <- finaldata
+# changing factors into numeric 
+final.knn[,c(1,4,6,8:10)] <- sapply(final.knn[,c(1,4,6,8:10)], as.numeric)
+
+
+# Splitting data into test and train 
+set.seed(202111)
+index.k = sample.split(final.knn$sleeptrouble, SplitRatio = 0.9)
+train.k = subset(final.knn, index == TRUE)
+test.k = subset(final.knn, index == FALSE)
+
+
+#  Select the feature variables
+train.X=train.k[,1:10]
+# Set the target for training
+train.Y=train.k[,11]
+
+test.X=test.k[,1:10]
+test.Y=test.k[,11]
+
+
+# Chosing optimal value of K
+
+error <- c()
+set.seed(202111)
+# Create a list of neighbors
+neighbors <-c(1:20)
+for(i in seq_along(neighbors))
+{
+  # Perform a KNN regression fit
+  knn_res <- knn(train.X, test.X, train.Y, k = neighbors[i])
+  # Compute R sqaured
+  error[i] <- sqrt(sum((test.Y - as.numeric(knn_res))^2))
+}
+plot(error, type = "b",col = "Blue", main = " Error vs no of k", xlab = "No of K")
+
+
+# Fitting with the best value of K
+
+
+model.knn <- knn(train.X, test.X, cl=train.Y, k = 18, prob = TRUE)
+
+
+############## Accuracy ###########
+acc.knn <- do.confusionknn(model.knn, test.k$sleeptrouble)
+colnames(acc.knn) <- "Rate"
+acc.knn
+
+MSE.knn <- mean((test.Y - as.numeric(knn_res))^2)
+paste0("MSE of the KNN is ",round(MSE.knn, digits = 3))
+
+######## ROC curve#########
+test_prob.k =  attr(model.knn, "prob")
+test_roc.k = (roc(test.Y, test_prob.k, plot = TRUE, print.auc = TRUE))
+
+
+```
+
+
+   *The KNN model shows the probability of sleep trouble in the data. To fit the KNN model, I have used cross-validation to choose the optimal value of K for the best fit. I have scanned the error for the value of 1 to 20. The model shows the error is minimum when the k is equal to 18 and the error tends to increase beyond 18.*
+
+   *I have also drawn the confusion matrix. It shows that (113+15) 128 of the 185 data was predicted correctly, and (44+13) 57 of the total data was predicted falsely. The accuracy of the model was 69.19%, the true positive rate was 25.42% and the false positive rate was 10.32%. I have also calculated the MSE of the model, which is 1.032.*
+
+   *From the analysis of the KNN, I came to know that sleep has been affected positively or negatively affected by bad physical health, depression, alcohol consumption, income, hard drugs, and smoking has a significant effect on the sleep of the individual.*
+
+   *The AUC of the model is 0.616, which is comparatively better.*
+
+
+
+## [4] Linear discriminant analysis (LDA)
+
+```{r}
+library(MASS)
+model.lda <- lda(sleeptrouble~., data = train.orig)
+# model.lda
+
+
+confusion_lqda =function(model,data){
+  preds=(predict(model,newdata=data,type="response"))$class
+  vals=predict(model,newdata=data,type="response")
+  cm=table(preds,data$sleeptrouble)
+  message("Confusion Matrix:");print(cm)
+  ac=((cm[1,1]+cm[2,2])/sum(cm))*100
+  message("Overall test accuracy (percentage) : ", round(ac,2))
+  Test_error <- round((100-ac),2)
+  paste0("Test error (percantage): ",Test_error)
+  Modelacc <-  round((cm[1,1]+cm[2,2])/sum(cm)*100,2)
+  print("Model Accuracy (Percentage):")
+  print(Modelacc)
+  print("True Positive Rate, TPR (percentage):")
+  TPR <- round(cm[2,2]/(cm[2,2]+cm[1,2])*100,2)
+  print(TPR)
+  print("False Postive Rate, FPR (percentage):")
+  spec=cm[1,1]/(cm[1,1]+cm[2,1])*100
+  FPR <- round((100-spec),2)
+  print(FPR)
+  return(as.data.frame(rbind(accuracy = ac,TPR,FPR)))
+  
+}
+
+acc.lda <- confusion_lqda(model.lda, test.orig)
+colnames(acc.lda) <- "Rate"
+acc.lda
+
+############ Accuracy ############
+
+log.prediction.lda <- predict(model.lda, test.orig)
+MSE.lda <- mean((log.prediction.lda$x - test.orig$sleeptrouble)^2)
+
+paste0("MSE of the LDA model is ",round(MSE.lda, digits = 3))
+
+##############3 Visualization #####
+
+par(mfrow=c(1,1))
+plot(log.prediction.lda$posterior[,2], log.prediction.lda$class, col=test.orig$sleeptrouble+10)
+
+plot(model.lda)
+
+
+
+test_prob.lda =  predict(model.lda, test.orig, type = "response")$x
+test_roc.lda = roc(test.orig$sleeptrouble ~ test_prob.lda, plot = TRUE, print.auc = TRUE)
+
+
+```
+
+   *The LDA model was fitted with the variables and a confusion matrix was also drawn. It shows that (116+9) 125 of the 185 data was predicted correctly, and (50+10) 60 of the total data was predicted falsely.*
+
+   *The accuracy of the model was 67.57%, the true positive rate was 15.25% and the false-positive rate was 7.94%. I have also calculated the MSE of the model, which is 1.056.*
+
+   *I have also plotted the predicted data to show the amount of data that was predicted with the probability. Also, bar chat shows the amount of class predicted.*
+
+   *From the analysis of LDA, I came to know that sleep has been affected positively or negatively affected by bad physical health, depression, alcohol consumption, income, hard drugs, and smoking has a significant effect on the sleep of the individual. However, the classifier has not been able to predict correctly. This has been shown by the AUC of the model is 0.580, which is considered bad.*
+
+
+
+## [5] Quadratic discriminant analysis (QDA)
+
+```{r}
+# For qda
+model.qda <- qda(sleeptrouble~., data = train.orig)
+
+
+acc.qda <- confusion_lqda(model.qda, test.orig)
+colnames(acc.qda) <- "Rate"
+acc.qda
+
+
+log.prediction.qda <- predict(model.qda, test.orig, prob = TRUE)
+MSE.qda <- mean((log.prediction.qda$posterior[,2] - test.orig$sleeptrouble)^2)
+
+paste0("MSE of the QDA model is ",round(MSE.qda, digits = 3))
+
+
+#### Visualization######
+
+log.prediction.qda <- predict(model.qda, test.orig, type= "response")
+par(mfrow=c(1,1))
+plot(log.prediction.qda$posterior[,2], log.prediction.qda$class, col=test.orig$sleeptrouble+10)
+
+### roc ###
+test_prob.qda =  predict(model.qda, test.orig, type = "response")$posterior[,2]
+test_roc.qda = roc(test.orig$sleeptrouble ~ test_prob.qda, plot = TRUE, print.auc = TRUE)
+
+
+```
+
+
+   *The QDA model was fitted with the variables and a confusion matrix was also drawn. It shows that (107+13) 120 of the 185 data was predicted correctly, and (19+46) 65 of the total data was predicted falsely.*
+
+   *The accuracy of the model was 64.86%, the true positive rate was 22.03% and the false-positive rate was 15.08%. I have also calculated the MSE of the model, which is 0.258.*
+
+   *I have also plotted the predicted data to show the amount of data that was predicted with the probability.*
+
+  *From the analysis of LDA, I came to know that sleep has been affected positively or negatively affected by bad physical health, depression, alcohol consumption, income, hard drugs, and smoking has a significant effect on the sleep of the individual. However, the classifier has not been able to predict correctly. This has been shown by the AUC of the model is 0.573, which is considered bad and is comparatively less than other models.*
+
+
+2) What classifier do you recommend from Exercise 1 and why?
+
+```{r}
+
+tablecom <- round(as.data.frame(rbind(MSE.log, MSE.nn, MSE.knn,MSE.lda, MSE.qda)), digits = 4)
+colnames(tablecom)<-c("ERROR")
+
+knitr::kable(tablecom, digits = 3,
+             caption = "MSE of all the classifier")
+
+##################### Test accuracy ##########################
+
+
+tablecom1 <- round(as.data.frame(cbind(acc.log, acc.knn,acc.lda, acc.qda)), digits = 4)
+colnames(tablecom1)<-c("LogReg","KNN","LDA","QDA")
+
+knitr::kable(tablecom1, digits = 3,
+             caption = " Test accuracy of all the classifier")
+
+
+
+```
+   
+   
+   *To determine which model is the best, I calculated the MSE, FTR, TPR, and ROC curve, which shows the model's performance.The MSE shows that the neural network and QDA respectively have the least MSE. I do not recommend QDA has the highest FPR for the model. AUC of the logistic regression = 0.580, Neural network = 0.187, KNN = 0.616, LDA = 0.580 and QDA = 0.573. When AUC is greater than 0.5, it is considered good; however, lying on the margin is considered bad. As a result of the AUC, the neural network appears to be a good classifier. Because the neural network has the lowest MSE and highest AUC, I would recommend it as the classifier for my data.*
+
+
+
+
+
+```{r}
+# Source
+# https://www.geeksforgeeks.org/the-validation-set-approach-in-r-programming/
+# https://cran.r-project.org/web/packages/olsrr/vignettes/variable_selection.html
+# https://datascienceplus.com/how-to-perform-logistic-regression-lda-qda-in-r/
+# https://uc-r.github.io/discriminant_analysis
+# https://stackoverflow.com/questions/36048856/r-knn-knn3train-caret-extract-probabilities
+# https://discuss.analyticsvidhya.com/t/how-to-resolve-error-na-nan-inf-in-foreign-function-call-arg-6-in-knn/7280
+# https://daviddalpiaz.github.io/r4sl/logistic-regression.html
+# https://www.analyticsvidhya.com/blog/2017/09/creating-visualizing-neural-network-in-r/
+# https://community.rstudio.com/t/neural-net-plot-not-showing-up-on-the-html-rendered-from-a-r-markdown/38929/3
+
+
+
+
+
+
+```
