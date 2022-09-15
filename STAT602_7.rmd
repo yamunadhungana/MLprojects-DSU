@@ -1,0 +1,570 @@
+---
+title: "Modern Applied Statistics exercises from ISLR"
+author: "Yamuna Dhungana"
+output: pdf_document
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,warning=F,message=F)
+```
+
+
+
+### Use set.seed(16489) in each exercise to make results reproducible. Do not use the `cv.glm` function or similar functions.
+
+1. Question 5.4.3 on page 198
+
+3 We now review k-fold cross-validation.
+a) Explain how k-fold cross-validation is implemented.
+   
+   Let us say, $n$ be the no of observation and $K$ be the no of folds. The test set will be of the length $n/k$ and The remaining length of data i.e. $n-n/k$ is training set data. The test data do not overlap. Error is then calculated for each K and then averaged. For example, we have the number of observations $1000$, $k$ is $5$, Test set for each $K$ is $1000/5$ which is $200$ without replacement. Now the error is calculated by the training data and then validated with the test data. After calculating the error for all $k$ the error is averaged, and the final error is K-fold cross-validation.   
+
+
+(b) What are the advantages and disadvantages of k-fold crossvalidation
+relative to:
+i. The validation set approach?
+
+Advantage:
+
+1. The Validation estimates of the test error can be highly variable, depending
+on precisely which observations are included in the training set and which observations are included in the validation set. 
+
+2. Validation set error rate may tend to overestimate the test error rate for the model fit on the entire data set.
+
+Disadvantage:
+
+1. Validation set approach is conceptually simple and easy to implement.
+
+
+ii. LOOCV?
+
+Advantage:
+
+1. LOOCV requires fitting the statistical learning method $n$ times. This has the potential to be computationally intensive.
+
+2. k-fold CV often gives more accurate estimates of the test error rate than does LOOCV.
+
+Disadvantage:
+
+If we need to reduce bias, LOOCV should be preferred over k-fold CV because it tends to have less bias. So, there is a bias-variance trade-off associated with the choice of $k$ in k-fold cross-validation. Generally, if we use $k=5$ or $k=10$ that yield test error rate estimates which suffer neither from excessively high bias nor from very high variance.
+
+
+2. Question 5.4.5 on page 198
+In Chapter 4, we used logistic regression to predict the probability of 
+default using income and balance on the Default data set. We will
+now estimate the test error of this logistic regression model using the
+validation set approach. Do not forget to set a random seed before
+beginning your analysis.
+
+a.Fit a logistic regression model that uses income and balance to
+predict default.
+
+```{r,echo=FALSE,warning=FALSE}
+library(ISLR)
+data("Default")
+# head(Default)
+
+model0 <- glm(default~balance+income, data = Default, family = binomial)
+summary(model0)
+
+```
+   
+   **2(a)**
+   
+   After fitting the model, we found out that both the balance and the income is
+   statistically significant. 
+   
+
+b.Using the validation set approach, estimate the test error of this
+model. In order to do this, you must perform the following steps:
+
+i.Split the sample set into a training set and a validation set.
+
+```{r,echo=FALSE,warning=FALSE}
+
+# Splitting data in the ration of 3:2
+
+n <- dim(Default)[1]
+set.seed(16489)
+num <- sample(1:n, size= round(n/1.5), replace = FALSE)
+train.data <- Default[num,]
+valid.data <- Default[-num,]
+summary(train.data$default)
+summary(valid.data$default)
+
+```
+   
+   **b(i)**
+   
+   By using the set.set equal to 16489 as mentioned in question, we split the data
+   into training set and validation set.
+   
+
+ii.Fit a multiple logistic regression model using only the training
+observations.
+
+```{r,echo=FALSE,warning=FALSE}
+model1 <- glm(default~balance+income, data = train.data, family = binomial)
+summary(model1)
+
+```
+   
+   
+   
+   A logistic model to predict the default status was made using the income and
+   balance on the training set. 
+     
+
+
+iii. Obtain a prediction of default status for each individual in
+the validation set by computing the posterior probability of
+default for that individual, and classifying the individual to
+the default category if the posterior probability is greater
+than 0.5.
+
+```{r,echo=FALSE,warning=FALSE}
+
+actualdef <- as.numeric(valid.data$default)-1
+probs <- round(predict(model1, newdata= valid.data, type = "response"))
+preds <- rep(0, length(probs))
+for(i in 1:length(preds)){
+  if(probs[i]>0.5){
+    preds[i]=1
+  }
+}
+
+```
+     
+   
+ 
+   The prediction of default status is dummy coded here. With 1 indicating the
+   default status and 0 indicating non-default status.
+
+
+iv.Compute the validation set error, which is the fraction of
+the observations in the validation set that are misclassified.
+
+```{r,echo=FALSE,warning=FALSE}
+
+TPR_FPR <- function(con){
+  Accuracy=100*((con[1,1]+con[2,2])/sum(con))
+  TPR=100*(con[2,2]/(con[2,2]+con[1,2]))
+  FPR=100*(1-con[1,1]/(con[1,1]+con[2,1]))
+  return(as.data.frame(rbind(Accuracy,TPR, FPR)))
+}
+missclassfied_table <-  TPR_FPR(table(preds, actualdef))
+colnames(missclassfied_table) <- "Error Rate"
+
+knitr::kable(missclassfied_table, digits = 3,
+             caption = "Validation set Error")
+
+```
+   
+   
+  
+   The test error was estimated based on the validation set. The accuracy of the
+   model is 97.450 that means error rate was (100-97.450)= 2.55%. Likewise, true
+   positive rate of the model is 33.036% and False positive rate is 0.310%.    
+
+
+c.Repeat the process in (b) three times, using three different splits
+of the observations into a training set and a validation set. Comment
+on the results obtained.
+
+```{r,echo=FALSE,warning=FALSE}
+
+# Split-1
+
+attach(Default)
+set.seed(16489)
+# splitval <- c(1.2(0.83),1.6(0.625), 1.8(0.556))
+num.1 <- sample(1:n, size= round(n/1.2), replace = FALSE)
+train.data.1 <- Default[num.1,]
+valid.data.1 <- Default[-num.1,]
+summary(train.data.1$default)
+summary(valid.data.1$default)
+
+model1.a <- glm(default~balance+income, data = train.data.1, family = binomial)
+summary(model1.a)
+
+
+actualdef.1 <- as.numeric(valid.data.1$default)-1
+probs.1 <- round(predict(model1.a, newdata= valid.data.1, type = "response"))
+preds.1 <- rep(0, length(probs.1))
+for(i in 1:length(preds.1)){
+  if(probs.1[i]>0.5){
+    preds.1[i]=1
+  }
+}
+
+missclassfied_table.1 <-  TPR_FPR(table(preds.1, actualdef.1))
+colnames(missclassfied_table.1) <- "Error Rate with 1st split"
+
+
+###################################################################
+# Second split
+set.seed(16489)
+num.2 <- sample(1:n, size= round(n/1.6), replace = FALSE)
+train.data.2 <- Default[num.2,]
+valid.data.2 <- Default[-num.2,]
+summary(train.data.2$default)
+summary(valid.data.2$default)
+
+model1.b <- glm(default~balance+income, data = train.data.2, family = binomial)
+summary(model1.b)
+
+
+actualdef.2 <- as.numeric(valid.data.2$default)-1
+probs.2 <- round(predict(model1.b, newdata= valid.data.2, type = "response"))
+preds.2 <- rep(0, length(probs.2))
+for(i in 1:length(preds.2)){
+  if(probs.2[i]>0.5){
+    preds.2[i]=1
+  }
+}
+
+missclassfied_table.2 <-  TPR_FPR(table(preds.2, actualdef.2))
+colnames(missclassfied_table.2) <- "Error Rate with 2nd split"
+
+#####################################################
+# Third split
+set.seed(16489)
+num.3 <- sample(1:n, size= round(n/1.8), replace = FALSE)
+train.data.3 <- Default[num.3,]
+valid.data.3 <- Default[-num.3,]
+summary(train.data.3$default)
+summary(valid.data.3$default)
+
+model1.c <- glm(default~balance+income, data = train.data.3, family = binomial)
+summary(model1.c)
+
+
+actualdef.3 <- as.numeric(valid.data.3$default)-1
+probs.3 <- round(predict(model1.c, newdata= valid.data.3, type = "response"))
+preds.3 <- rep(0, length(probs.3))
+for(i in 1:length(preds.3)){
+  if(probs.3[i]>0.5){
+    preds.3[i]=1
+  }
+}
+
+missclassfied_table.3 <-  TPR_FPR(table(preds.3, actualdef.3))
+colnames(missclassfied_table.3) <- "Error Rate with 3rd split"
+
+
+tablecombined <- as.data.frame(cbind(missclassfied_table.1, missclassfied_table.2, missclassfied_table.3))
+knitr::kable(tablecombined, digits = 3,
+             caption = "Validation set Error")
+
+
+
+```
+ 
+   
+   I have split the data into 3 sets. The set.seed is set as mentioned. For all 
+   the three splits the accuracy is diffenence with only 0.1  The TPR and FPR also
+   has the similar output.  
+
+
+
+d) Now consider a logistic regression model that predicts the probability
+of default using income, balance, and a dummy variable
+for student. Estimate the test error for this model using the validation
+set approach. Comment on whether or not including a
+dummy variable for student leads to a reduction in the test error
+rate.
+
+```{r,echo=FALSE,warning=FALSE}
+
+set.seed(16489)
+
+num.d <- sample(1:n, size= round(n/2), replace = FALSE)
+train.data.d <- Default[num.d,]
+valid.data.d <- Default[-num.d,]
+summary(train.data.d$default)
+summary(valid.data.d$default)
+
+model1.d <- glm(default~balance+income+student, data = train.data.d, family = binomial)
+summary(model1.d)
+
+
+actualdef.d <- as.numeric(valid.data.d$default)-1
+probs.d <- round(predict(model1.d, newdata= valid.data.d, type = "response"))
+preds.d <- rep(0, length(probs.d))
+for(i in 1:length(preds.d)){
+  if(probs.d[i]>0.5){
+    preds.d[i]=1
+  }
+}
+
+missclassfied_table.d <-  TPR_FPR(table(preds.d, actualdef.d))
+colnames(missclassfied_table.d) <- "Error Rate"
+knitr::kable(missclassfied_table.d, digits = 3,
+             caption = "Validation set Error")
+
+
+###########################################################
+
+# For clearification 
+attach(Default)
+set.seed(16489)
+# splitval <- c(1.2(0.83),1.6(0.625), 1.8(0.556))
+num.1d <- sample(1:n, size= round(n/1.2), replace = FALSE)
+train.data.1d <- Default[num.1d,]
+valid.data.1d <- Default[-num.1d,]
+summary(train.data.1d$default)
+summary(valid.data.1d$default)
+
+model1.ad <- glm(default~balance+income+student, data = train.data.1d, family = binomial)
+summary(model1.ad)
+
+
+actualdef.1d <- as.numeric(valid.data.1d$default)-1
+probs.1d <- round(predict(model1.ad, newdata= valid.data.1d, type = "response"))
+preds.1d <- rep(0, length(probs.1d))
+for(i in 1:length(preds.1d)){
+  if(probs.1d[i]>0.5){
+    preds.1d[i]=1
+  }
+}
+
+missclassfied_table.1d <-  TPR_FPR(table(preds.1d, actualdef.1d))
+colnames(missclassfied_table.1d) <- "Error Rate with 1st split"
+
+
+###################################################################
+# Second split
+set.seed(16489)
+num.2d <- sample(1:n, size= round(n/1.6), replace = FALSE)
+train.data.2d <- Default[num.2d,]
+valid.data.2d <- Default[-num.2d,]
+summary(train.data.2d$default)
+summary(valid.data.2d$default)
+
+model1.bd <- glm(default~balance+income+student, data = train.data.2d, family = binomial)
+summary(model1.bd)
+
+
+actualdef.2d <- as.numeric(valid.data.2d$default)-1
+probs.2d <- round(predict(model1.bd, newdata= valid.data.2d, type = "response"))
+preds.2d <- rep(0, length(probs.2d))
+for(i in 1:length(preds.2d)){
+  if(probs.2d[i]>0.5){
+    preds.2d[i]=1
+  }
+}
+
+missclassfied_table.2d <-  TPR_FPR(table(preds.2d, actualdef.2d))
+colnames(missclassfied_table.2d) <- "Error Rate with 2nd split"
+
+#####################################################
+# Third split
+set.seed(16489)
+num.3d <- sample(1:n, size= round(n/1.8), replace = FALSE)
+train.data.3d <- Default[num.3d,]
+valid.data.3d <- Default[-num.3d,]
+summary(train.data.3d$default)
+summary(valid.data.3d$default)
+
+model1.cd <- glm(default~balance+income+student, data = train.data.3d, family = binomial)
+summary(model1.cd)
+
+
+actualdef.3d <- as.numeric(valid.data.3d$default)-1
+probs.3d <- round(predict(model1.cd, newdata= valid.data.3, type = "response"))
+preds.3d <- rep(0, length(probs.3d))
+for(i in 1:length(preds.3d)){
+  if(probs.3d[i]>0.5){
+    preds.3d[i]=1
+  }
+}
+
+missclassfied_table.3d <-  TPR_FPR(table(preds.3d, actualdef.3d))
+colnames(missclassfied_table.3d) <- "Error Rate with 3rd split"
+
+
+tablecombined_d <- as.data.frame(cbind(missclassfied_table.1d, missclassfied_table.2d, missclassfied_table.3d))
+knitr::kable(tablecombined_d, digits = 3,
+             caption = "Validation set Error for clearification")
+
+
+```
+   
+ 
+   
+   Data partitioning was done as in the previous question with the set seed of 16489. With the variables, the data shows that it is statistically significant with both the balance and income. The accuracy of the model is 97.400% that means it has a test error of (100-97.380 =) 2.62%. Likewise, the true positive rate is 33.9% and, the False positive rate is 0.373%. These errors are similar to the error with three splits in the above table. The error rate for this model is 2.62. However, I do not argue that the slight change in the accuracy is because of the addition of the student variable. Hence, for clarification, I have
+repeated the same process as in question C and got the accuracy mentioned above in the table. The error showed a similar difference in question c with each  other. However, if we compare the error with the same split of data the addition of the student variable, there is a slight decrease in the accuracy even it is 0.1. Hence, in conclusion, I can say that the student variable has decreased the accuracy of the model. 
+
+
+3. Question 5.4.7 page 200  
+In Sections 5.3.2 and 5.3.3, we saw that the cv.glm() function can be
+used in order to compute the LOOCV test error estimate. Alternatively,
+one could compute those quantities using just the glm() and
+predict.glm() functions, and a for loop. You will now take this approach
+in order to compute the LOOCV error for a simple logistic
+regression model on the Weekly data set. Recall that in the context
+of classification problems, the LOOCV error is given in (5.4).
+
+(a) Fit a logistic regressionmodel that predicts Direction using Lag1
+and Lag2.
+
+```{r,echo=FALSE,warning=FALSE}
+library(ISLR)
+data("Weekly")
+dim(Weekly)
+weeklymodel1=glm(Direction~Lag1+Lag2,data=Weekly, family=binomial)
+summary(weeklymodel1)
+
+```
+
+
+
+   The model did not pick the Lag1 variable as statistically significant.
+
+
+b.Fit a logistic regression model that predicts Direction using Lag1
+and Lag2 using all but the first observation.
+
+```{r,echo=FALSE,warning=FALSE}
+
+model.butfirst=glm(Direction~Lag1+Lag2,data=Weekly[-1,], family=binomial)
+summary(model.butfirst)
+
+```
+   
+   
+  
+   The model did not pick the Lag1 variable as statistically significant as before.
+
+
+c.Use the model from (b) to predict the direction of the first observation.
+You can do this by predicting that the first observation
+will go up if P(Direction="Up"|Lag1, Lag2) > 0.5. Was this observation
+correctly classified?
+
+```{r,echo=FALSE,warning=FALSE}
+
+firstpred=(predict(model.butfirst, newdata = Weekly[1,],type="response"))
+firstpred=ifelse(firstpred > 0.5,"UP","Down")
+firstpred
+Weekly[1,]$Direction
+
+```
+  
+  
+  **3c**
+  
+  First observation was classified as Up. It was a misclassification.
+
+
+d. Write a for loop from i = 1 to i = n, where n is the number of
+observations in the data set, that performs each of the following
+steps:
+i. Fit a logistic regression model using all but the ith observation
+to predict Direction using Lag1 and Lag2.
+ii. Compute the posterior probability of the market moving up
+for the ith observation.
+iii. Use the posterior probability for the ith observation in order
+to predict whether or not the market moves up.
+iv. Determine whether or not an error was made in predicting
+the direction for the ith observation. If an error was made,
+then indicate this as a 1, and otherwise indicate it as a 0.
+
+(e) Take the average of the n numbers obtained in (d)iv in order to
+obtain the LOOCV estimate for the test error. Comment on the
+results.
+
+Both question is answered combinedly
+
+```{r,echo=FALSE,warning=FALSE}
+
+# qestion d and e
+dataN <- dim(Weekly)[1]
+ misclassifyYes=rep(NA,dataN)
+for (i in 1:dataN){
+  modL <- glm(Direction~Lag1 +Lag2, data = Weekly[-i,], family = "binomial")
+  actualDirection=ifelse(Weekly$Direction[i]=="Up",1,0)
+  predL=round(predict(modL,newdata=Weekly[i,],type="response"))
+  misclassifyYes[i]=abs(actualDirection - predL)
+}
+sum(misclassifyYes)
+## 490
+paste0("Percent Error: ",round(100*(sum(misclassifyYes)/dataN),3))
+## 44.995
+
+```
+   
+   
+  
+   Part d and e is answered combinedly. The loop was run 1089 times, since there
+   were 1089 observations. 490 was misclassified. The overall error rate was 
+   4.995%.
+
+
+4. Write your own code (similar to Exercise \#3 above) to estimate test error using k-fold cross validation for fitting a linear regression model of the form
+
+$$ mpg = \beta_0 + \beta_1 * X_{1} + \beta_2 * X_{1}^2$$
+
+  from the **Auto** data in the **ISLR** library, with $X_{1} =$ horsepower. Use `echo = T` to show the code. Test this code with `k = 5` and `k = 30`. Discuss the computational trade-off between the two choices of `k`. Do not use the `cv.glm` function.
+
+```{r,echo=TRUE,warning=FALSE}
+library(ISLR)
+data(Auto)
+# head(Auto)
+AutoN <- dim(Auto)[1]
+# k= 30
+valueofK <- function(k){
+# folds = AutoN/k
+stopsoffolds <- c(0,round(c(1:k)*(AutoN/k)))
+for (i in 1:k){
+  (stopsoffolds[i+1]-stopsoffolds[i])
+}
+set.seed(16489)
+randomizedindex=sample(1:AutoN,AutoN)
+testMSE=rep(NA,k)
+for(i in 1:k){
+  autotestindex=randomizedindex[((stopsoffolds[i]+1):stopsoffolds[i+1])]
+  autotrain=Auto[-autotestindex,]
+  autotest=Auto[autotestindex,]
+  
+  automodel=glm(mpg~horsepower+I(horsepower^2),data=autotrain)
+  pred=predict(automodel,newdata=autotest)
+
+  testMSE[i]=sum((pred-autotest$mpg)^2)/dim(autotest)[1]
+}
+(testMSE)
+sum(testMSE)/k
+}
+
+MSE_when_k_5 <- valueofK(5)
+
+MSE_when_k_30  <- valueofK(30)
+
+
+
+ finaltab <- cbind(MSE_when_k_5, MSE_when_k_30)
+ knitr::kable(finaltab, digits = 3,
+              caption = "K-fold cross validation with two different K")
+
+```
+
+   
+   
+   Here, 5 and 30 folds were created using seed 16489. There are 392 observations in the dataset. Each time, 1 fold was held out for validation, and the other 5 folds were used to make the model. I have made the function for the calculation of the two different folds. The MSE for these folds is given in the table above. The MSE for 30 folds looks higher than the 5 folds. The MSE for all 5 folds is given  as- 17.07849, 17.11979, 19.11285, 22.27647, 19.95182. The MSE of the 5 fold is 19.108 whereas, the MSE of the 30 fold is 19.203. By comparing these folds we can see that K- fold with 30 has comparatively little bias than the f- fold with 5. But, has slightly high variability. 
+   
+   
+   
+   
+```{r,echo=FALSE,warning=FALSE}
+
+# https://www.geeksforgeeks.org/the-validation-set-approach-in-r-programming/
+# https://daviddalpiaz.github.io/r4sl/resampling.html
+# Slides from 601
+# ISLR book
+# https://github.com/ppaquay/IntroStatLearning/blob/master/Chap5.m
+
+```
+
+
+
