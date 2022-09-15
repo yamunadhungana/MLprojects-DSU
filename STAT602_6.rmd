@@ -1,0 +1,618 @@
+---
+title: "Modern Applied Statistics exercises from ISLR"
+author: "Yamuna Dhungana"
+output: 
+    pdf_document:
+        latex_engine: xelatex
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,warning=F,message=F)
+```
+
+
+1) Question 4.7.7 pg 170 *show your work, feel free to use R and use* `echo = T` *to show your code.*
+Suppose that we wish to predict whether a given stock will issue a dividend this year (“Yes” or “No”)
+based on X, last year’s percent profit.We examine a large number of companies and discover that the
+mean value of X for companies that issued a dividend was $\overline{X} = 10$ , while the mean for those that didn’t was $\overline{X} = 0$. In addition, the variance of $X$ for these two sets of companies was $ˆσ2 = 36$.Finally,80% of companies issued dividends. Assuming that X follows a normal distribution, predict the probability that a company will issue a dividend this year given that its percentage profit was 
+$X = 4$ last year. Hint: Recall that the density function for a normal random variable is 
+$$f(x) = \frac{1}{\sqrt{2\pi\sigma^2}}e^{\frac{-(x-\mu)^2}{2\sigma^2}}$$
+. You will need to use Bayes’ theorem.
+
+**Solution**
+The values given in question are
+$$\pi _{YES} = 0.8$$
+$$\pi _{NO} = 0.2$$
+$$\mu _{YES} = 10$$ 
+$$\mu _{N0} = 0$$ 
+$${\sigma^2} = 36$$
+pluging the given values to the density function here, $\pi_k$ is 0.8 and 0.2 and divident is Yes and No. 
+
+So, using the density function to calculate $f_k(x)$
+
+$$f_{k}(x) = \frac{1}{\sqrt{2\pi\sigma^2}}e^{\frac{-(x-\mu)^2}{2\sigma^2}}$$
+we get, 
+
+$$f_{yes}(x)= 0.0402$$
+$$f_{No}(x)= 0.0532$$
+
+Form the ISLR book, using the equation 4.10 of Bayes Theorem 
+
+$$P_{(divident=K|X=x)} = \frac{\pi_k f_k(x)}{\sum _{l=1}^{k}\pi_lf_l(x)} $$
+again, plunging the value we calculated earlier in the above equation.
+
+$$P_{yes}(4) = \frac{0.8 \times 0.04032}{0.8 \times 0.0402 + 0.2 \times 0.0532} = 0.75186$$
+
+```{r}
+library(ISLR)
+library(caTools)
+library(mclust)
+library(MASS)
+library(ggplot2)
+library(knitr)
+
+```
+
+### The same can be done in R and get the result:
+
+```{r, eval=TRUE, echo=TRUE}
+# pdf function
+pdf <- function(x, mu_k, sigma){((sqrt(2*pi)*sigma)^-1)*(exp(-((2*sigma^2)^-1)*(x-mu_k)^2))}
+
+sigma <- 6 # for both classes
+
+# Type 1 where companies issued dividend
+pi_1 <- .8
+mu_1 <- 10
+
+# Type 2 where companies  did not issue dividend
+pi_2 <- .2
+mu_2 <- 0
+
+# Calculate probabilities based on Bayes
+x <- 4
+p_1 <- (pi_1*pdf(4,mu_1,sigma))/(pi_1*pdf(4,mu_1,sigma) + pi_2*pdf(4,mu_2,sigma))
+p_2 <- (pi_2*pdf(4,mu_2,sigma))/(pi_1*pdf(4,mu_1,sigma) + pi_2*pdf(4,mu_2,sigma))
+
+# rounding the numbers
+p_1 <- round(p_1,4)
+p_2 <- round(p_2,4)
+
+# prediction
+prediction <- data.frame(cbind(c("Dividend", "Non-Dividend"), c(p_1, p_2)))
+colnames(prediction) <- c("Types", "prediction")
+prediction
+
+
+
+```
+
+  Based on my analysis 75.19 % of the companies will announce the dividend this year and 24.81% 
+  will not do so. 
+
+
+
+2) Continue from Homework \#3 \& 4 using the **Auto** dataset from 4.7.11. Construct a model (using the predictors chosen for previous homework) and fit this model using `MclustDA` function from the **mclust** library. Use the same training and test set from previous homework assignments.
+    
+  i) Provide a summary of your model.
+  - What is the best model using BIC as the model selection criteria? Report the model name and
+  BIC.(See [mclustModelNames]
+  (https://www.rdocumentation.org/packages/mclust/versions/5.4/topics/mclustModelNames))
+   - Report the true positive rate, true negative rate, training error, and test error. You can reuse
+   the function written in Homework \# 3.
+    
+    
+```{r,echo=FALSE,warning=FALSE}
+
+# Using the previous work to start
+data(Auto)
+mpg01 <- rep(NA,dim(Auto)[1])
+med_ian <- median(Auto$mpg)
+mpg01 = ifelse(Auto$mpg<med_ian,0,1)
+my_data = as.data.frame(cbind(Auto, mpg01))
+
+# dropping mpg and names
+my_data.fnl <- my_data[,c(c(2,3,4,5,6,7,8,10))]
+
+# head(my_data)
+
+#Splitting data into test and train  
+
+mysplit <- sample.split(my_data.fnl, SplitRatio = 0.70)
+train <- subset(my_data.fnl,mysplit==T)
+test <- subset(my_data.fnl,mysplit==F)
+#dim(train)
+
+Autotrain <- train[,-8]
+Autotrainclass <- train[,8]
+
+Autotest <- test[,-8]
+Autotestclass <- test[,8]
+
+
+
+automodelDA <- MclustDA(Autotrain, Autotrainclass)
+summary(automodelDA)
+
+
+# BIC selection 
+knitr::kable(cbind(summary.MclustDA(automodelDA)$modelName,summary.MclustDA(automodelDA)$bic),
+      caption = "Best model selected by BIC", col.names=c("Model names","BIC"))
+#kable(tablecom.mcl, col.names=c("Model names","BIC"))
+```
+   
+   Like the previous work, I have split the data into test and train sets. I have divided the
+   dataset into a ratio of 70 to 30. I have fitted the MclustDA model. Following the previous work,
+   the response was the binary coded MPG (whether greater or equal to median mpg). Same predictors
+   as previous were used as previous based on their correlation with mpg01. 
+   The BIC of the model is -10568.327944618 and has the model ellipsoidal, equal volume, and equal
+    shape with the 3 and 4 groups. 
+
+
+
+```{r,echo=FALSE,warning=FALSE}
+
+# To different accuracies of the model
+
+TPR_TNR <- function(con){
+  accuracy <-  round(100*(con[1,1]+con[2,2])/sum(con),2) ## error rate is 100 - accuracy
+  TPR=round(con[2,2]/(con[2,2]+con[1,2])*100,2)
+  TNR=round(con[1,1]/(con[1,1]+con[2,1])*100,2) ## FPR=100-TNR
+  #return(list(overall_accuracy = accuracy,True_positive_rate = TPR,True_negative_rate = TNR))
+  return(as.data.frame(rbind(accuracy,TPR,TNR)))
+}
+# train accuracy 
+pred_train1 <-  predict(automodelDA,newdata=Autotrain)$classification
+table_train_1 <- TPR_TNR(table(pred_train1, Autotrainclass))
+colnames(table_train_1) <- "Mclust train set"
+# table_train_1
+
+# test error
+pred_test1 <- predict(automodelDA,newdata=Autotest)$classification
+table_test_1 <- TPR_TNR(table(pred_test1, Autotestclass))
+colnames(table_test_1) <- "Mclust test set"
+# table_test_1
+
+tablecom.mcl <- as.data.frame(cbind(table_train_1,table_test_1))
+knitr::kable(tablecom.mcl, digits = 3,
+             caption = "Mclust model accuracy measures")
+
+
+
+```
+  
+   Using the same function as in homework 3 and 4. I used the same function to find out the test
+   accuracies of the model. The accuracy of the train and the test model is presented in table-2.  
+   
+   
+      
+  ii) Specify `modelType = "EDDA"` and run `MclustDA` again. Provide a summary of your model.
+  -What is the best model using BIC as the model selection criteria? Report the model name 
+  and BIC.
+  -Report the true positive rate, true negative rate, training error, and test error.
+
+
+```{r,echo=FALSE,warning=FALSE}
+
+model2 <- MclustDA(Autotrain, Autotrainclass, modelType = "EDDA")
+summary(model2)
+
+# BIC selection 
+knitr::kable(cbind(summary.MclustDA(model2)$modelName,summary.MclustDA(model2)$bic),
+      caption = "Best model selected by BIC with EDDA", col.names=c("Model names","BIC"))
+#kable(tablecom.mcl, col.names=c("Model names","BIC"))
+```
+
+   Fitting the MclustDA model with the model type EDDA we get the BIC with -11500.33 with the model
+   name ellipsoidal, varying volume, shape, and orientation (VVV), and has a single group.
+
+
+
+```{r,echo=FALSE,warning=FALSE}
+## train error
+pred_train2 <- predict(model2, newdata=Autotrain)$classification
+table_train_3 <- TPR_TNR(table(pred_train2, Autotrainclass))
+colnames(table_train_3) <- "Mclust:EDDA train set"
+# table_train_3
+
+## test error
+pred_test2 <- predict(model2, newdata=Autotest)$classification
+table_test_3 <- TPR_TNR(table(pred_test2,Autotestclass))
+colnames(table_test_3) <- "Mclust:EDDA test set"
+# table_test_3
+
+tablecom.edda <- as.data.frame(cbind(table_train_3,table_test_3))
+knitr::kable(tablecom.edda, digits = 3,
+             caption = "Mclust with EDDA model accuracy measures")
+
+
+```
+   
+   The Model accuracies are reported in the table-4 
+   
+    
+   iii) Compare the results with Homework \#3 \& 4. Which method performed the best? Justify your
+   answer. *Present your results in a well formatted table; include the previous methods and their
+   corresponding rates.*
+    
+```{r,echo=FALSE,warning=FALSE}
+
+# Combined error for Mclust models
+
+tablecom1 <- as.data.frame(cbind(table_train_1,table_test_1,table_train_3,table_test_3))
+knitr::kable(tablecom1, digits = 3,
+             caption = "Mclust models accuracy measures")
+
+
+################################################################
+
+# repeating my previous work
+fit.log <- glm(mpg01 ~ cylinders + weight + displacement + horsepower, data = train, family = binomial)
+# summary(fit.log)
+
+
+# Function for test errors
+
+test.err <- function(cutoff,model,test){
+  preds <- rep(0,dim(test)[1])
+  probs <- predict(model,newdata=test, type="response")
+  for(i in 1:length(probs)){
+    if(probs[i]>=cutoff){
+      preds[i]=1
+    }
+  }
+  con <- table(preds,test$mpg01)
+  accuracy <- round(100*(con[1,1]+con[2,2])/sum(con),2) ## error rate is 100 - accuracy
+  TPR <- round(con[2,2]/(con[2,2]+con[1,2])*100,2)
+  TNR <- round(con[1,1]/(con[1,1]+con[2,1])*100,2) ## FPR=100-TNR
+  #return(list(overall_accuracy = accuracy,True_positive_rate = TPR,True_negative_rate = TNR))
+  return(as.data.frame(rbind(accuracy,TPR,TNR)))
+  
+}
+
+# Train error
+table_train_4 <- test.err(0.5,fit.log,train)
+colnames(table_train_4) <- "Logreg.model Train set"
+
+# Test error
+table_test_4 <- test.err(0.5,fit.log,test)
+colnames(table_test_4) <- "Logreg.model Test set"
+
+# Combined error for logistic regression
+tablecom2 <- as.data.frame(cbind(table_train_4, table_test_4))
+knitr::kable(tablecom2, digits = 3,
+             caption = "Logreg Accuracy measures")
+
+########################################################################################
+
+# FOr lda
+
+fit_lda = lda(mpg01 ~ cylinders + weight + displacement + horsepower, data = train)
+
+
+test.err_lqda=function(model,testt){
+  trues <- testt$mpg01
+  preds <- (predict(model,newdata=testt,type="response"))$class
+  con <- table(preds,trues)
+  #con <- table(preds,test$mpg01)
+  accuracy <- round(100*(con[1,1]+con[2,2])/sum(con),2) ## error rate is 100 - accuracy
+  TPR <- round(con[2,2]/(con[2,2]+con[1,2])*100,2)
+  TNR <- round(con[1,1]/(con[1,1]+con[2,1])*100,2) ## FPR=100-TNR
+  #return(list(overall_accuracy = accuracy,True_positive_rate = TPR,True_negative_rate = TNR))
+  return(as.data.frame(rbind(accuracy,TPR,TNR)))
+
+}
+# Test error
+table_train_5 <- test.err_lqda(fit_lda, train)
+colnames(table_train_5) <- "LDA.model Train set"
+
+# Test error
+table_test_5 <- test.err_lqda(fit_lda, test)
+colnames(table_test_5) <- "LDA.model Test set"
+
+# Combined error for LDA models
+tablecom3 <- as.data.frame(cbind(table_train_5, table_test_5))
+knitr::kable(tablecom3, digits = 3,
+             caption = "LDA model Accuracy measures")
+
+#################################################################################################
+
+# For qda
+fit_qda <- qda(mpg01 ~ cylinders + weight + displacement + horsepower,data=train)
+
+# Test error for QDA
+table_train_6 <- test.err_lqda(fit_qda, train)
+colnames(table_train_6) <- "QDA.model Train set"
+
+# Test error
+table_test_6 <- test.err_lqda(fit_qda, test)
+colnames(table_test_6) <- "QDA.model Test set"
+
+
+# Combined error for QDA models
+tablecom4 <- as.data.frame(cbind(table_train_6, table_test_6))
+knitr::kable(tablecom4, digits = 3,
+             caption = "QDA model Accuracy measures")
+
+```
+   
+   We have performed Logistic regression, LDA, QDA in the previous assignment, and in the present
+   assignment I have performed MclustDa and with the model type EDDA. By looking at the table
+   presented in table-5,6 7 and 8. We see that the accuracy of the MclustDA looks better than the
+   other models and LDA and QDA have the least accuracy. Likewise, TPR and TNR also looks better in
+   the MclustDA model. 
+   
+    
+  iv) From the original model variables, construct a new set of variables, fit a model using 
+  `MclustDA` and repeat i-iii. *Hint: new variables may be interactions, polynomials, and/or splines.*
+  Do these new variables give an improvement in error rates compared to previous models? Explain how
+  the new variables were constructed.
+    
+```{r,echo=FALSE,warning=FALSE}
+# Here I am using previous variabele that shows most significance in the data
+
+formula1 <- mpg01 ~ weight + horsepower + horsepower:weight # interaction
+formula2 <- mpg01 ~ poly(weight, 2, raw = TRUE) + poly(horsepower, 2, raw = TRUE) # polynomials
+
+
+hw.int <- my_data.fnl$horsepower*my_data.fnl$weight
+weigh.poly <- poly(my_data.fnl$weight, 2, raw = TRUE)[,2]
+hors.poly <- poly(my_data.fnl$horsepower, 2, raw = TRUE)[,2]
+
+
+# Combining the new variables 
+new.data <- cbind(my_data.fnl[,c(8,3,4)], hw.int,hors.poly, weigh.poly)
+
+
+#Splitting data into test and train  
+
+newdata_split <- sample.split(new.data, SplitRatio = 0.70)
+newdata.train <- subset(new.data,mysplit==T)
+newdata.test <- subset(new.data,mysplit==F)
+
+
+
+a_trainX <- newdata.train[,-1]
+a_trainClass <- newdata.train[,1]
+a_testX <- newdata.test[,-1]
+a_testClass <- newdata.test[,1]
+
+
+## MclustDA
+
+mod1 <- MclustDA(a_trainX[,1:3], a_trainClass)
+summary(mod1)
+
+mod2 <- MclustDA(a_trainX[,4:5], a_trainClass)
+summary(mod2)
+
+# BIC selection 
+knitr::kable(cbind(summary.MclustDA(mod1)$modelName,summary.MclustDA(mod1)$bic, summary.MclustDA(mod2)$modelName,summary.MclustDA(mod2)$bic),
+      caption = "Best model selected by BIC with two models", 
+      col.names=c("Model1:model names","Model1:BIC", "MOdel2:model names", "MOdel2:BIC"))
+
+
+
+# For model 1 
+# Train set
+train.predicted_1 <-  predict(mod1, newdata=a_trainX[,1:3])$classification
+train.tab_1 <- TPR_TNR(table(train.predicted_1, a_trainClass))
+colnames(train.tab_1) <- "Mod1.mclustDA train set"
+# train.tab_1
+
+# test set
+test.predicted_1 <- predict(mod1, newdata=a_testX[,1:3])$classification
+test.tab_1 <- TPR_TNR(table(test.predicted_1, a_testClass))
+colnames(test.tab_1) <- "mod1.mclustDA test set"
+# test.tab_1
+
+
+# For model 2 
+# Train set
+train.predicted_2 <-  predict(mod2, newdata=a_trainX[,4:5])$classification
+train.tab_2 <- TPR_TNR(table(train.predicted_2, a_trainClass))
+colnames(train.tab_2) <- "Mod2.mclustDA train set"
+# train.tab_2
+
+# test set
+test.predicted_2 <- predict(mod2, newdata=a_testX[,4:5])$classification
+test.tab_2 <- TPR_TNR(table(test.predicted_2, a_testClass))
+colnames(test.tab_2) <- "Mod2.mclustDA test set"
+# test.tab_2
+
+# Combined error for Mclust models
+tablecom5 <- as.data.frame(cbind(train.tab_1, test.tab_1,train.tab_2,test.tab_2))
+knitr::kable(tablecom5, digits = 3,
+             caption = "MclustDA:Accuracy measures for two models")
+
+#####################################################################################
+
+mod1.edda <- MclustDA(a_trainX[,1:3], a_trainClass, modelType = "EDDA")
+summary(mod1.edda)
+
+mod2.edda <- MclustDA(a_trainX[,4:5], a_trainClass,modelType = "EDDA" )
+summary(mod2.edda)
+
+# BIC selection 
+knitr::kable(cbind(summary.MclustDA(mod1.edda)$modelName,summary.MclustDA(mod1.edda)$bic, summary.MclustDA(mod2.edda)$modelName,summary.MclustDA(mod2.edda)$bic),
+      caption = "Best model selected by BIC with two models using EDDA", 
+      col.names=c("Model1:model names","Model1:BIC", "MOdel2:model names", "MOdel2:BIC"))
+
+# For model 1 
+# Train set
+train.predicted_1ed <-  predict(mod1.edda, newdata=a_trainX[,1:3])$classification
+train.tab_1ed <- TPR_TNR(table(train.predicted_1ed, a_trainClass))
+colnames(train.tab_1ed) <- "Mod1.edda train set"
+# train.tab_1
+
+# test set
+test.predicted_1ed <- predict(mod1.edda, newdata=a_testX[,1:3])$classification
+test.tab_1ed <- TPR_TNR(table(test.predicted_1ed, a_testClass))
+colnames(test.tab_1ed) <- "mod1.edda test set"
+# test.tab_1
+
+
+# For model 2 
+# Train set
+train.predicted_2ed <-  predict(mod2.edda, newdata=a_trainX[,4:5])$classification
+train.tab_2ed <- TPR_TNR(table(train.predicted_2ed, a_trainClass))
+colnames(train.tab_2ed) <- "Mod2.edda train set"
+# train.tab_2
+
+# test set
+test.predicted_2ed <- predict(mod2.edda, newdata=a_testX[,4:5])$classification
+test.tab_2ed <- TPR_TNR(table(test.predicted_2ed, a_testClass))
+colnames(test.tab_2ed) <- "mod2.edda test set"
+# test.tab_2
+
+# Combined error for Mclust EDDA models
+tablecom6 <- as.data.frame(cbind(train.tab_1ed, test.tab_1ed,train.tab_2ed,test.tab_2ed))
+knitr::kable(tablecom6, digits = 3,
+             caption = "MclustDA with EDDA:Accuracy measures for two models")
+
+###########################################################################################
+
+# First model with Logistic regression
+
+fit_log1 <- fit.log <- glm(formula1, data = newdata.train, family = binomial)
+summary(fit_log1)
+
+# Second model with Logistic regression
+fit_log2 <- fit.log <- glm(formula2, data = newdata.train, family = binomial)
+summary(fit_log2)
+
+
+# For model-1
+# Train error
+train.predicted_1log <- test.err(0.5,fit_log1,newdata.train)
+colnames(train.predicted_1log) <- "mod1.Logreg Train set"
+
+# Test error
+test.predicted_1log <- test.err(0.5,fit_log1,newdata.test)
+colnames(test.predicted_1log) <- "mod1.Logreg Test set"
+
+
+# For model-2
+
+# Train error
+train.predicted_2log <- test.err(0.5,fit_log2,newdata.train)
+colnames(train.predicted_2log) <- "mod2.Logreg Train set"
+
+# Test error
+test.predicted_2log <- test.err(0.5,fit_log2,newdata.test)
+colnames(test.predicted_2log) <- "mod2.Logreg Test set"
+
+
+# Combined error for Mclust EDDA models
+tablecom7 <- as.data.frame(cbind(train.predicted_1log, test.predicted_1log,train.predicted_2log,test.predicted_2log))
+knitr::kable(tablecom7, digits = 3,
+             caption = "Logistic regression: Accuracy measures for two models")
+
+#################################################################################################
+
+# First model with LDA
+fit_lda1 = lda(formula1, data = newdata.train)
+
+# Second model with LDA
+fit_lda2 = lda(formula2, data = newdata.train)
+
+
+
+# MOdel-1
+# Test error
+table_train_lda1 <- test.err_lqda(fit_lda1, newdata.train)
+colnames(table_train_lda1) <- "LDA.mod1 Train set"
+
+# Test error
+table_test_lda1 <- test.err_lqda(fit_lda1, newdata.test)
+colnames(table_test_lda1) <- "LDA.mod1 Test set"
+
+
+
+
+# MOdel 2
+table_train_lda2 <- test.err_lqda(fit_lda2, newdata.train)
+colnames(table_train_lda2) <- "LDA.mod2 Train set"
+
+# Test error
+table_test_lda2 <- test.err_lqda(fit_lda2, newdata.test)
+colnames(table_test_lda2) <- "LDA.mod1 Test set"
+
+
+
+# Combined error for Mclust EDDA models
+tablecom8 <- as.data.frame(cbind(table_train_lda1, table_test_lda1,table_train_lda2,table_test_lda2))
+knitr::kable(tablecom8, digits = 3,
+             caption = "LDA: Accuracy measures for two models")
+
+
+####################################################################################
+
+# First model with QDA
+fit_Qda1 = qda(formula1, data = newdata.train)
+
+# Second model with LDA
+fit_Qda2 = qda(formula2, data = newdata.train)
+
+
+
+# MOdel-1
+# Test error
+table_train_qda1 <- test.err_lqda(fit_Qda1, newdata.train)
+colnames(table_train_qda1) <- "LDA.mod1 Train set"
+
+# Test error
+table_test_qda1 <- test.err_lqda(fit_Qda1, newdata.test)
+colnames(table_test_qda1) <- "QDA.mod1 Test set"
+
+
+
+
+# MOdel 2
+table_train_qda2 <- test.err_lqda(fit_Qda2, newdata.train)
+colnames(table_train_qda2) <- "QDA.mod2 Trainset"
+
+# Test error
+table_test_qda2 <- test.err_lqda(fit_Qda2, newdata.test)
+colnames(table_test_qda2) <- "QDA.mod1 Test set"
+
+
+
+# Combined error for Mclust EDDA models
+tablecom9 <- as.data.frame(cbind(table_train_qda1, table_test_qda1,table_train_qda2,table_test_qda2))
+knitr::kable(tablecom9, digits = 3,
+             caption = "QDA: Accuracy measures for two models")
+
+
+
+
+```
+   
+   Previously, I have found that cylinders, weight, displacement, and horsepower are mostly associated 
+   with the mpg01 variable. However, in the logistic regression, I found out that the P-values for weight 
+   and horsepower are statistically significant. Hence, I only used these two variables for the interaction
+   and as the polynomial. The interaction term is `mpg01 ~ weight + horsepower + horsepower:weight` and the
+   polynomial is `mpg01 ~ poly(weight, 2, raw = TRUE) + poly(horsepower, 2, raw = TRUE)`. I have fitted
+   MclustDA, MclustDA with EDDA, Logistic regression, LDA, and QDA models with these variables. From the
+   MclustDA and Mclust with EDDA,  the BIC of models are presented in table- 9 and table-11. Model-1 has a
+   higher BIC than the second model and is considered as the better fit. The Model name of model-1 are
+   ellipsoidal, equal volume and equal shape (EEV), and ellipsoidal, equal shape (VEV). Likewise, The model
+   name for the second model are ellipsoidal, equal orientation (new models in mclust version >= 5.0.0)(VVE)
+   and ellipsoidal, equal orientation (new models in mclust version >= 5.0.0)(VEE).
+   For the MclustDA with EDDA, model-1 also has the highest BIC than the second model. Both the models have
+   the model name same which is ellipsoidal, varying volume, shape, and orientation (VVV).
+   I have Fitted all the models previously solved with the same interaction, and polynomial terms. I have
+   calculated the accuracy measures. The accuracy of the models are presented in the table above. The
+   accuracy of the model varies from 89.9 to 82.99. MclustDA model has the highest accuracy. The accuracy 
+   of the model does not improve with these new variables.
+
+
+```{r,echo=FALSE,warning=FALSE}
+# https://stats.stackexchange.com/questions/280344/multiple-polynomial-regression-versus-gam
+# https://cran.r-project.org/web/packages/interactions/vignettes/interactions.html
+# https://stackoverflow.com/questions/60951077/rename-a-single-column-in-kable-table
+# Cami's solution video for homework-5
+
+
+```
