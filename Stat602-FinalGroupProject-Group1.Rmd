@@ -1,0 +1,832 @@
+---
+title: "Stat602 Final Group Project"
+author: Rylie Fleckenstein, Seema Bhandari, Yamuna Dhungana, Roshni Sharma, Lilibeth
+  Lumbreras
+date: "5/4/2021"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+```{r libraries, message = FALSE}
+
+library(neuralnet) 
+library(nnet) 
+library(MASS)
+library(knitr)
+library(scales)
+library(knitr)
+library(caret)
+library(ggplot2)
+library(e1071)
+library(dplyr)
+library(class)
+library(gridExtra)
+
+```
+
+Typically, cultivation of dry bean seeds in Turkey yields mixed varieties during harvest. This poses a problem as market value of dry beans are dependent on whether there is separability between the different varieties of beans (Koklu and Ozkan, 2020).  Upon evaluation at market, the net worth of a sample of beans decreases if there is no clear identification between the beans. In this study, our task is to develop an automated method that can ameliorate the issue of decreased market values of dry beans by predicting the value of a harvest from a ‘population cultivation’ from a single farm that has been presented at market. Given three different sets of single pound of white beans, our method will predict the classifications of the bean varieties and each set's estimated net worth. Additional measures of confidence and uncertainty for our estimates will be provided to support those predictions. 
+
+From our discussions, our team developed a model building process to support a solution for the dry bean problem. Prior to initiation of the model building process, each group member chose a classification technique to test. The formal approach first requires exploratory analysis of the data. This analysis of the data assists in identifying any initial patterns or correlations in the labeled dataset. The second step involves pre-processing the data prior to testing. For some techniques, they require pre-processing the data by dummy encoding target variables or scaling the data. Next, the process involves splitting the labeled data into training and testing groups. Our team decided that we would use an 80/20 training and testing split for our analysis. In our fourth step, we tested our models using our chosen classification techniques. The models are built using the training group and then tested using the testing split of the labeled data. In the next step, we used our own error determination algorithm and formula to calculate metrics of price value accuracy. In our sixth step, we then applied the algorithm and formula to the three sample sets. In our seventh step, we used metrics like overall training accuracy, F1-score, and the price value accuracies applied to the samples to determine model selection and our final recommendation. 
+
+The labeled dataset consists of 3000 observations and eight variables: Class (our dependent variable), Area, Perimeter, MajorAxisLength, MinorAxisLength, Eccentricity, ConvexArea, and Extent. The first thing we wanted to do was take a look at the predictors and see if there were any strong correlations between them. As we can see in *Table 1*, the correlation matrix, several of the predictors are strongly correlated which we will be able to see through some visualizations. In the plots shown in *Plots 1* and *Plots 2* we take a look at the different predictors just to get an idea if the different classes of the response variable are separable and if using a machine learning approach is the right choice. From the data visualizations it appears we will be able to build a reliable classifier for this problem with the existing predictor variables.From Koklu and Ozkan 2020, we noted that the original study already identified the 12 most effective dimensional features of beans for classification. Our current task consists of using a subset of seven of those identified effective features, so we felt no additional variable selection was necessary. Some data pre-processing is necessary to prepare the data for use in our classifiers. In order to build a neural network with the 'neuralnet' library we must dummy encode the target variable which is shown in *Figure 1*. The last step of data pre-processing involves scaling our data. In order for a few of our algorithms to function properly we must make sure all of our data is normalized. We will create a separate normalized data set to be used in the algorithms that require it, and keep the original data for the algorithms that don't. Finally, for our training and test data sets used for building our classifiers, our team decided to use an 80/20 split.
+
+We constructed our neural network, consisting of 3 hidden layers. The first hidden layer has 15 nodes, the second hidden layer has 10 nodes, and the third hidden layer has 3 nodes. The input layer has a node for each variable so there are 7 and the output layer has a node for each class in the target variable so there are 6. We have set the parameter 'linear.output' to FALSE in order to let the network know that the activation function should be applied to the output neurons. This is the case because we are dealing with a multi-class classification problem and we want the network to generate predicted probabilities for each class. The network achieves this by running the output through the activation function that we have set which in this case is the 'logistic' function. We then take the neuron with the highest probability and predict that class to be the class for that bean. The final model is trained using our entire "labeled" data set and is to be used for making predictions on our samples (www.rdocumentation.org/packages/neuralnet).
+
+Our second model, Linear Discriminant Analysis (LDA), attempts to maximize the separation between classes. Using the maximized linear combination of predictor variables, the LDA method will predict the classification of the testing data using the lda function from the MASS library. LDA assumes that the predictors are normally distributed, have class specific means, and are of equal variance. In order to verify the accuracy of our estimated test error, we applied Leave-One-Out-Cross-Validation (LOOCV) to the LDA model using all the labeled data by setting CV = TRUE when fitting our model (Saunders, 2018). The mean accuracy was similar to the test accuracy. 
+
+The third model we chose to implement was built using the k-nearest neighbors algorithm. The KNN algorithm is a supervised, non-parametric method used for classification and sometimes regression. When used for classification, like the problem we are applying it to, the algorithm returns the predicted class label of each test instance based upon the most prevalent training class of its k closest neighbors. Because this is a distance based algorithm, scaling our data must be part of the preprocessing.  In order to build our KNN model we used the knn() function, which is part of the library 'class' (Gareth, 2013, p.164). After building our model we fine tuned the hyperparameter 'k' (*Figure 2*) and determined the optimal k is 16 since it returns the highest accuracy.
+
+Support vector machine (SVM) is a supervised machine learning algorithm used in classification and regression problems. SVM uses a hyperplane that acts as the decision boundary to classify the data. The dataset 'labeled' consists of various attributes like area, perimeter, major axis length, etc. In the same data set, we have a Class variable that is used to classify the type of bean for each instance. With the 'labeled' dataset, the model is trained with the function 'train ()' using the 'caret' library. The train function fits the models over various tuning parameters. The data set is scaled and centered with a tuned length of 10. For this model we are implementing a linear kernel. Using the function trainControl, we conducted a 10 fold CV that was repeated 3 times to choose the optimal train control (Gareth, 2013, p.337, 349, 360).
+
+Random forests are ensemble training methods used for classification and regression problems. They are built by combining a multitude of decision trees and their outputs are generated by taking the average prediction made by all of the individual trees. This algorithm is known for being easy to implement as it effectively deals with missing values and categorical variables. Also, scaling of the data is not required before training this model. Here we built our random forest model using the 'train' function from the library 'caret'. Using the function trainControl, we conducted a 10-fold cross validation to choose the optimal train control. After building our model, we identified the count of randomly selected predictor variables that affecting our random forest method. (*Figure 3*).  In the variable importance plot (*Figure 4*), we can see the variables that have the most importance in predicting the class of our beans. The most important variables are Area, Eccentricity and MajorAxisLength. The variables Extent and Perimeter have the lowest levels of importance in our predictions (Gareth, 2013, p.319-321). 
+
+The next part of the analysis involves determining how much error (in dollars) there might be in our final predicted price. We know that each of our samples is a 1-pound sample of beans. Knowing this, what we need to do is calculate the weight of our sample predictions given by our models and develop some type of algorithm that gives a higher accuracy score to models whose predictions are close to 1 pound and a lower score to those whose predictions are not. The logical reasoning behind this is that, since we know how many beans are in our sample (number of rows in the data), we know how much the sample is supposed to weigh (1 pound) and we know how much on average one bean for each class weighs, there only exists a certain distribution of beans within the sample that maintains all these constraints (*Formulas*).
+
+We took the predicted bean counts and multiplied each count by its respective average weight per bean. We then took the sum of these weights to determine the weight of our predictions. We then took the absolute value of the difference between the predicted weight and the actual weight (1 pound for the samples) and divided this by the average weight of a bean to give us the predicted number of beans we are off in classification. Since we cannot confidently say which classes these misclassified beans are from, we deiced to take an average of the bean weights and an average of the bean costs (per bean) and use those values for our calculations. From there we multiplied that misclassification rate by the average price of a bean to determine the predicted price error. To determine the price accuracy, we subtracted the price error from the predicted price and then divided that by the predicted price (*Formulas*).
+
+To gauge how well our training models were performing we used Accuracy, F1-score and we took a look at how close the predicted price was to the actual price (*Table 3*). We also looked at Precision by Bean to get an idea of how a test model's performance may influence bean counts (*Table 4*, *Table 6*, *Table 8*, *Table 10*) with Bombay having the best precision and Dermason and Sira beans having low precisions. This coincides with Koklu and Ozkan's observations. We took into consideration the predicted price accuracies each model had on all of the samples and determined that the best model for this problem was the Random Forest model (*Table 5*, *Table 7*, *Table 9*). Although KNN had the better Accuracy and F1-score, we found that it had performed worse when applied to the samples as it went over price and weight constraints in Samples B and C. The Random Forest classifier, when applied to all three samples, remained within price and weight constraints while still having the second best Accuracy and F1-Scores. Overall the Random Forest classifier had a good balance of model performance metrics and was reliable in its application on the sample sets. After comparing our five models, we determined that the Random Forest classifier was the optimal model for our automated method to provide farms for value estimation when presenting their dry bean at market. 
+
+
+# Tables/Figures: 
+
+# Formulas
+
+Formulas:
+
+Price per Bean (class specific):
+$$p_i = w_i * r_i$$ where $r_i$ = rate in dollars/pound per class, $w_i$ = weight in pounds per class
+
+Average price of a bean (not class specific):
+$$p_b = \frac{\sum_{i=1}^np_i}{n}$$ where n is the number of classes of bean
+
+Average weight of a bean (not class specific):
+$$w_b = \frac{\sum_{i=1}^nw_i}{n}$$ where n is the number of classes of bean
+
+Prediction weight:
+$$W_{pred} = \sum_{i=1}^n C_iw_i$$ where $C_i$ = predicted count of beans per class 
+
+Error in weight prediction:
+$$W_{diff} = |W_{pred} - W_{act}|$$ where $W_{act}$ = actual weight of the sample (1 pound for our samples)
+
+Error Price:
+$$Error_{price}= \frac{W_{diff}}{w_b}*c_b $$, where $w_b$ = average weight of a bean, and $p_b$ = average price of a bean
+
+Predicted Price:
+$$P_{pred} = \sum_{i=1}^np_i*C_i$$
+where $p_i$ = price for each class of beans in dollars, and $C_i$ = number of beans, by class, predicted to be in the sample by out classifier. 
+
+Accuracy:
+$$Accuracy_{price}= \frac{P_{pred} - Error_{price}}{P_{pred}} $$
+
+
+```{r functions}
+# predictions function
+
+# test mod function
+test.mod.func <- function(predictions, TestResponse){
+
+  original_values <- TestResponse
+  accuracy <- mean(predictions == original_values)
+  
+
+  tab <- table(predictions)
+  counts <- c()
+  for (i in 1:6){
+    counts[i] <- tab[[i]]
+  }
+  
+  tab2 <- table(original_values)
+  counts2 <- c()
+  for (i in 1:6){
+    counts2[i] <- tab2[[i]]
+  }
+    
+     # calculate price
+  # Bombay: 5.56/lb, Cali: 6.02/lb, Dermason: 1.98/lb, Horoz: 2.43/lb, Seker: 2.72/lb, Sira: 5.40/lb
+  
+  # weight per seed in grams
+  # Bombay: 1.92g, Cali: 0.61g, Dermason: 0.28g, Horoz: 0.52g, Seker: 0.49g, Sira: 0.38g
+  
+  
+  # confusion matrix
+  conf_mat <-table(original_values, predictions)
+
+  
+  # gram weight of beans based on average weight per bean
+  calc_weights_g <- c(counts[1]*1.92, counts[2]*0.61, counts[3]*0.28, counts[4]*0.52, counts[5]*0.49, counts[6]*0.38)
+  act_weights_g <- c(counts2[1]*1.92, counts2[2]*0.61, counts2[3]*0.28, counts2[4]*0.52, counts2[5]*0.49, counts2[6]*0.38)
+  
+  #convert to pounds
+  calc_weights_p <- c()
+  for (i in 1:6){
+    calc_weights_p[i] <- calc_weights_g[i]/453.592
+  }
+  
+  
+  act_weights_p <- c()
+  for (i in 1:6){
+    act_weights_p[i] <- act_weights_g[i]/453.592
+  }
+  
+  pred_w <- sum(calc_weights_p)
+  act_w <- sum(act_weights_p)
+  
+ 
+  # total price of sample based on price per pound of each bean
+  calc_price <- (calc_weights_p[1]*5.56 + calc_weights_p[2]*6.02 + calc_weights_p[3]*1.98 + calc_weights_p[4]*2.43 + calc_weights_p[5]*2.72 + calc_weights_p[6]*5.40)
+  
+  act_price <- (act_weights_p[1]*5.56 + act_weights_p[2]*6.02 + act_weights_p[3]*1.98 + act_weights_p[4]*2.43 + act_weights_p[5]*2.72 + act_weights_p[6]*5.40)
+  
+  # recall
+ recs <- c()
+  for (i in 1:6){
+    recs[i] <- conf_mat[i,i]/sum(conf_mat[,i])
+  }
+  
+ # precision
+  precs <- c()
+  for (i in 1:6){
+   precs[i] <- conf_mat[i,i]/sum(conf_mat[i,])
+  }
+  
+
+  pred_w <- sum(calc_weights_p)
+  diff_w <- abs(pred_w - act_w)
+  beans_off <- diff_w / avg_w
+  error <- abs(beans_off * avg_p) 
+  
+  price_accuracy <- (calc_price - error)/calc_price
+  
+  f_1 <- (2 * mean(precs) * mean(recs))/(mean(precs) + mean(recs))
+  
+return(list("Test Classification Accuracy" = accuracy,  "Actual Price"=act_price,
+ "Predicted Price"=calc_price,
+  "Confusion Matrix"=conf_mat,
+  "Precisions"=precs,
+  "F1 Score"=f_1))
+  
+}
+
+
+
+
+# final mod function
+
+samp.price.algo <- function(testMod, FinalModPreds){
+  
+   # calculate price
+  # Bombay: 5.56/lb, Cali: 6.02/lb, Dermason: 1.98/lb, Horoz: 2.43/lb, Seker: 2.72/lb, Sira: 5.40/lb
+  
+  # weight per seed in grams
+  # Bombay: 1.92g, Cali: 0.61g, Dermason: 0.28g, Horoz: 0.52g, Seker: 0.49g, Sira: 0.38g
+  
+  tab <- table(FinalModPreds)
+  counts <- c()
+  for (i in 1:6){
+    counts[i] <- tab[[i]]
+  }
+  
+  names(tab) <- c("Bombay", "Cali", "Dermason", "Horoz", "Seker", "Sira") 
+  
+  # gram weight of beans based on average weight per bean
+  calc_weights_g <- c(counts[1]*1.92, counts[2]*0.61, counts[3]*0.28, counts[4]*0.52, counts[5]*0.49, counts[6]*0.38)
+  
+  #convert to pounds
+  calc_weights_p <- c()
+  for (i in 1:6){
+    calc_weights_p[i] <- calc_weights_g[i]/453.592
+  }
+  
+  
+  
+    # total price of sample based on price per pound of each bean
+  calc_price <- (calc_weights_p[1]*5.56 + calc_weights_p[2]*6.02 + calc_weights_p[3]*1.98 + calc_weights_p[4]*2.43 + calc_weights_p[5]*2.72 + calc_weights_p[6]*5.40)
+  
+    pred_w <- sum(calc_weights_p)
+    diff_w <- abs(pred_w - 1)
+    beans_off <- diff_w / avg_w
+    error <- abs(beans_off * avg_p) 
+    
+    price_accuracy <- (calc_price - error)/calc_price
+    
+  return(list("Calculated Price"=calc_price,
+              "Bean Counts"=tab,
+              "Pred Weight"=pred_w,
+              "Error in Dollars"=paste("+/-",round(error,2)),
+              "Price Accuracy Prediction"=price_accuracy))
+  
+}
+
+# take a look at price per bean 
+  calc_weights_g <- c(1*1.92, 1*0.61, 1*0.28, 1*0.52, 1*0.49, 1*0.38)
+  
+  #convert to pounds
+  calc_weights_p <- c()
+  for (i in 1:6){
+    calc_weights_p[i] <- calc_weights_g[i]/453.592
+  }
+  
+  # total price per bean in dollars
+  calc_price <- c(calc_weights_p[1]*5.56, calc_weights_p[2]*6.02, calc_weights_p[3]*1.98, calc_weights_p[4]*2.43, calc_weights_p[5]*2.72, calc_weights_p[6]*5.40)
+  
+  
+  avg_w <- mean(calc_weights_p)
+  avg_p <- mean(calc_price)
+
+
+```
+
+```{r Load Data}
+# load data
+labeled.all <- read.csv("labeled.csv") # For all other models
+labeled <- labeled.all # For Neural Network Model
+sampleA <- read.csv("samp.A.csv")
+sampleB <- read.csv("samp.B.csv")
+sampleC <- read.csv("samp.C.csv")
+```
+
+
+
+```{r Exploratory Analysis}
+# exploratory analysis
+# correlation matrix
+kable(cor(labeled[,-c(1,9)]), caption="Correlation Matrix")
+
+```
+
+
+
+\newpage
+
+```{r EA Visualizations, fig.width=11, fig.height=7}
+# data visualizations
+cat("Plots 1")
+par(mfrow=c(2,2))
+for (i in names(labeled[,-c(1,9)])){
+  
+  boxplot(eval(as.symbol(i)) ~ Class, data=labeled,
+          main = paste(i, "vs Class"),
+          ylab = i)
+  
+}
+
+
+
+# scatter plots
+plt1 <- ggplot(data=labeled, aes(x=Area, y=Perimeter, color=as.factor(Class))) + geom_point(alpha=0.2)
+plt2 <- ggplot(data=labeled, aes(x=Eccentricity, y=Perimeter, color=as.factor(Class))) + geom_point(alpha=0.2)
+plt3 <- ggplot(data=labeled, aes(x=Extent, y=Perimeter, color=as.factor(Class))) + geom_point(alpha=0.2)
+plt4 <- ggplot(data=labeled, aes(x=ConvexArea, y=MajorAxisLength, color=as.factor(Class))) + geom_point(alpha=0.2)
+plt5 <- ggplot(data=labeled, aes(x=MajorAxisLength, y=Perimeter, color=as.factor(Class))) + geom_point(alpha=0.2)
+plt6 <- ggplot(data=labeled, aes(x=Eccentricity, y=ConvexArea, color=as.factor(Class))) + geom_point(alpha=0.2)
+
+```
+
+
+```{r Plots, fig.height=15, fig.width=6}
+#plots
+library(gridExtra)
+cat("Plots 2")
+grid.arrange(plt1, plt2, plt3, nrow=3)
+grid.arrange(plt4, plt5, plt6, nrow=3)
+
+```
+
+
+
+
+```{r Data Pre-Processing}
+# Preprocessing
+# dropping X variable
+labeled <- labeled[,-1]
+labeled.all <- labeled.all[,-1]
+labeled.knn <- labeled
+
+# dummy encoding target variable 
+labeled <- cbind(labeled[, 1:7], class.ind(as.factor(labeled$Class)))
+
+# Set labels name
+names(labeled) <- c(names(labeled)[1:7],"BOMBAY","CALI","DERMASON", "HOROZ", "SEKER", "SIRA" )
+
+cat("Figure 1.")
+head(labeled[,8:13])
+```
+
+
+
+```{r 80/20 Training Testing Split - NNET}
+set.seed(202104)
+# scaling data for NNET
+labeled[,1:7] <- scale(labeled[,1:7])
+
+# train/test split
+samp <- sample.int(n = nrow(labeled), size = floor(.80 * nrow(labeled)), replace = F)
+
+labeled.train <- labeled[samp,]
+labeled.test <- labeled[-samp,]
+
+```
+
+```{r 80/20 Training Testing Split - LDA, SVM, Random Forest}
+# Target Variables are not encoded
+set.seed(202104)
+
+# train/test split; samp.all = index, labeled.all.train = 80% training data, labeled.all.test = 20% testing data
+samp.all <-sample.int(n = nrow(labeled.all), size = floor(.80 * nrow(labeled.all)), replace = F); #samp.all
+
+labeled.all.train <- labeled.all[samp.all,]; #labeled.all.train
+labeled.all.test <- labeled.all[-samp.all,]; #labeled.all.test
+
+```
+
+
+```{r 80/20 Training Testing Split - KNN}
+# scaling data for KNN
+labeled.knn[,1:7] <- scale(labeled.knn[,1:7])
+
+# train/test split
+samp <- sample.int(n = nrow(labeled.knn), size = floor(.80 * nrow(labeled.knn)), replace = F)
+
+labeled.knn.train <- labeled.knn[samp,]
+labeled.knn.test <- labeled.knn[-samp,]
+```
+
+
+
+```{r Formula for NN}
+# formula for NN
+n <- names(labeled)
+form <- as.formula(paste("BOMBAY + CALI + DERMASON + HOROZ + SEKER + SIRA ~",
+                         paste(n[!n %in% c("BOMBAY","CALI","DERMASON", "HOROZ", "SEKER", "SIRA", "Class")],
+                               collapse = " + ")))
+
+```
+
+
+```{r Train Test NN}
+# source: https://www.rdocumentation.org/packages/neuralnet/versions/1.44.2/topics/neuralnet
+# training the test model
+nn.mod <- neuralnet(form,
+                data = labeled.train,
+                hidden = c(15, 10, 3),
+                act.fct = "logistic",
+                linear.output = FALSE,
+                lifesign = "minimal")
+```
+
+```{r Final NN}
+
+# training the final model
+nn.mod.final <- neuralnet(form,
+                data = labeled,
+                hidden = c(15, 10, 3),
+                act.fct = "logistic",
+                linear.output = FALSE,
+                lifesign = "minimal")
+                
+```
+
+```{r NN Visualization}
+plot(nn.mod)
+```
+
+```{r LDA Models}
+# test model
+lda.mod <- lda(Class ~., data = labeled.all, subset = samp.all)
+
+# final model
+lda.final.mod <-lda(Class ~., data = labeled.all)
+
+```
+
+```{r LOOCV LDA Accuracy Comparison}
+set.seed(202104)
+#As a Check: Compute test error based on LOOCV as a check; Accuracy is 86%
+#lda.CV.fit <-lda(Class~., CV = TRUE, data = labeled.all)
+#cat("LOOCV LDA Accuracy Check")
+#mean(lda.CV.fit$class == labeled.all$Class)
+
+```
+
+```{r KNN Optimization}
+library(class)
+set.seed(202104)
+#Optimization
+acc <- c()
+for (i in 1:20){
+  knn.mod <- knn(train=labeled.knn.train[,1:7], test=labeled.knn.test[,1:7], cl=as.factor(labeled.knn.train[,8]), k=i)
+  acc[i] <- 100 * sum(labeled.knn.test[,8] == knn.mod)/NROW(labeled.knn.test[,8])
+}
+```
+
+\newpage
+
+```{r KNN Accuracy Plot, fig.dim=c(5,5)}
+cat("Figure 2")
+#Accuracy plot
+plot(acc, type="b", xlab="K- Value",ylab="Accuracy level", main=paste("Optimal K:", which.max(acc)))
+```
+
+
+```{r SVM Models}
+
+#Source: https://www.edureka.co/blog/support-vector-machine-in-r/
+set.seed(202104)
+
+# Using trainControl, I used 10 fold CV that was repeated 3 times to chose the train control. 
+trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+
+# function from caret that fits the models over various tuning parameters
+# methods = linear, scaled and centered with tune length of 10 
+
+svm_Linear_test <- train(Class ~., 
+                    data = labeled.all.train, 
+                    method = "svmLinear",
+                    trControl=trctrl,
+                    preProcess = c("center", "scale"),
+                    tuneLength = 10)
+
+# function from caret that fits the models over various tuning parameters
+# methods = linear, scaled and centered with tune length of 10 using all data
+
+svm_Linear_final <- train(Class ~., 
+                    data = labeled.all, 
+                    method = "svmLinear",
+                    trControl=trctrl,
+                    preProcess = c("center", "scale"),
+                    tuneLength = 10)
+```
+
+
+
+```{r Random Forest Models}
+# source: www.edureka.co/blog/random-forest-classifier
+
+set.seed(202104)
+
+# Perform training:
+trctrl.rf  <- trainControl(method  = "cv",number  = 10) #, summaryFunction = multiClassSummary
+
+# function from caret that fits the models over various tuning parameters
+# methods = rf with tune length of 20 
+rf_test <- train(Class ~ ., data=labeled.all.train, method = "rf",
+                trControl = trctrl.rf, 
+                tuneLength = 20)
+
+# function from caret that fits the models over various tuning parameters
+# methods = rf with tune length of 20  usinag all data
+rf_final <- train(Class ~ ., data=labeled.all, method = "rf",
+                trControl = trctrl.rf, 
+                tuneLength = 20)
+
+```
+
+\newpage
+```{r }
+set.seed(202104)
+cat("Figure 3")
+plot(rf_test, main="Randomly selected predictors vs Accuracy")
+
+```
+
+```{r}
+set.seed(202104)
+kable(rf_test$results) 
+```
+
+\newpage
+```{r Variable Importance Visualization}
+set.seed(202104)
+cat("Figure 4")
+plot(varImp(rf_test), main="Variable Importance")
+
+```
+
+```{r Test NN}
+# Compute predictions
+test.pr.nn <- predict(nn.mod, labeled.test[,1:7])
+
+# Extract results
+test.preds.nn <- max.col(test.pr.nn)
+
+nn.test.mod <- test.mod.func(test.preds.nn, max.col(labeled.test[, 8:13]))
+
+```
+
+```{r Test LDA}
+# predictions test model
+lda.predict.test <-predict(lda.mod, labeled.all.test)
+#Extract Results
+lda.class.test <-lda.predict.test$class
+
+# call function on predictions (save inside variable for final price function)
+lda.test.mod <- test.mod.func(lda.class.test, labeled.all.test[,8])
+
+```
+
+```{r Test KNN}
+# source: www.edureka.co/blog/knn-algorithm-in-r/
+
+knn.test.preds <- knn(train=labeled.knn.train[,1:7], test=labeled.knn.test[,1:7], cl=as.factor(labeled.knn.train[,8]), k=which.max(acc))
+
+knn.test.mod <- test.mod.func(knn.test.preds, labeled.knn.test[,8])
+
+```
+
+```{r Test SVM}
+# Compute predictions
+svm.test.predict <-predict(svm_Linear_test, labeled.all.test)
+
+# test mod svm
+svm.test.mod <- test.mod.func(svm.test.predict, labeled.all.test[,8])
+
+```
+
+```{r Test Random Forest}
+# Compute predictions
+rf.test.predict <-predict(rf_test, labeled.all.test)
+
+# test mod svm
+rf.test.mod <- test.mod.func(rf.test.predict, labeled.all.test[,8])
+
+```
+\newpage
+
+# Model Comparision
+
+```{r model comparision}
+
+rslt.nn <- rbind("Test Accuracy" = nn.test.mod$`Test Classification Accuracy`,"Actual Price"= nn.test.mod$`Actual Price`,"Predicted Price"= nn.test.mod$`Predicted Price`,"F1 Score"= nn.test.mod$`F1 Score`)
+
+rslt.lda <- rbind("Test Accuracy" = lda.test.mod$`Test Classification Accuracy`,"Actual Price"= lda.test.mod$`Actual Price`,"Predicted Price"= lda.test.mod$`Predicted Price`,"F1 Score"= lda.test.mod$`F1 Score`)
+
+rslt.knn <- rbind("Test Accuracy" = knn.test.mod$`Test Classification Accuracy`,"Actual Price"= knn.test.mod$`Actual Price`,"Predicted Price"= knn.test.mod$`Predicted Price`,"F1 Score"= knn.test.mod$`F1 Score`)
+
+rslt.svm <- rbind("Test Accuracy" = svm.test.mod$`Test Classification Accuracy`,"Actual Price"= svm.test.mod$`Actual Price`,"Predicted Price"= svm.test.mod$`Predicted Price`,"F1 Score"= svm.test.mod$`F1 Score`)
+
+rslt.rf <- rbind("Test Accuracy" = rf.test.mod$`Test Classification Accuracy`,"Actual Price"= rf.test.mod$`Actual Price`,"Predicted Price"= rf.test.mod$`Predicted Price`,"F1 Score"= rf.test.mod$`F1 Score`)
+
+
+comb1 <- as.data.frame(cbind(rslt.nn, rslt.lda, rslt.knn, rslt.svm, rslt.rf))
+colnames(comb1) <- c("NNET", "LDA", "KNN", "SVM","RF")
+knitr::kable(round(comb1, digits = 4), caption = "Test Model Metrics")
+
+comb1a <-as.data.frame(rbind(nn.test.mod$`Precisions`, lda.test.mod$`Precisions`,  knn.test.mod$`Precisions`, svm.test.mod$`Precisions`, rf.test.mod$`Precisions`))
+row.names(comb1a) <- c("NNET", "LDA", "KNN", "SVM","RF")
+colnames(comb1a) <- c("BOMBAY","CALI","DERMASON", "HOROZ", "SEKER", "SIRA")
+knitr::kable(round(comb1a, digits = 4), caption = "Precision by Bean")
+
+```
+
+```{r Samples NNET}
+# predictions sample A
+# Compute predictions
+A.pr.nn <- predict(nn.mod.final, scale(sampleA[,2:8]))
+
+# Extract results
+A.preds.nn <- max.col(A.pr.nn)
+nnet.A <- samp.price.algo(nn.test.mod, A.preds.nn)
+
+# predictions sample B
+# Compute predictions
+B.pr.nn <- predict(nn.mod.final, scale(sampleB[,2:8]))
+
+# Extract results
+B.preds.nn <- max.col(B.pr.nn)
+nnet.B <- samp.price.algo(nn.test.mod, B.preds.nn)
+
+# predictions sample C
+# Compute predictions
+C.pr.nn <- predict(nn.mod.final, scale(sampleC[,2:8]))
+
+# Extract results
+C.preds.nn <- max.col(C.pr.nn)
+nnet.C <- samp.price.algo(nn.test.mod, C.preds.nn)
+```
+
+```{r Samples LDA}
+# predictions sample A
+lda.predict.A <-predict(lda.final.mod, sampleA)
+#Extract Results
+lda.class.A <-lda.predict.A$class
+lda.A <- samp.price.algo(lda.test.mod, lda.class.A)
+
+# predictions sample B
+lda.predict.B <-predict(lda.final.mod, sampleB)
+#Extract Results
+lda.class.B <-lda.predict.B$class
+lda.B <- samp.price.algo(lda.test.mod, lda.class.B)
+
+# predictions sample c
+lda.predict.C <-predict(lda.final.mod, sampleC)
+#Extract Results
+lda.class.C <-lda.predict.C$class
+lda.C <- samp.price.algo(lda.test.mod, lda.class.C)
+```
+
+```{r Samples KNN}
+# predictions sample A
+knn.pred.A <- knn(labeled.knn[,1:7], scale(sampleA[,2:8]), as.factor(labeled.knn[,8]), k=which.max(acc))
+knn.A <- samp.price.algo(knn.test.mod, knn.pred.A)
+
+# predictions sample B
+knn.pred.B <- knn(labeled.knn[,1:7], scale(sampleB[,2:8]), as.factor(labeled.knn[,8]), k=which.max(acc))
+knn.B <- samp.price.algo(knn.test.mod, knn.pred.B)
+
+# predictions sample C
+knn.pred.C <- knn(labeled.knn[,1:7], scale(sampleC[,2:8]), as.factor(labeled.knn[,8]), k=which.max(acc))
+knn.C <-samp.price.algo(knn.test.mod, knn.pred.C)
+```
+
+
+```{r Samples SVM}
+# predictions sample A
+svm.predict.A <-predict(svm_Linear_final, sampleA)
+
+#Extract Results
+svm.A <- samp.price.algo(svm.test.mod, svm.predict.A)
+
+# predictions sample B
+svm.predict.B <-predict(svm_Linear_final, sampleB)
+
+#Extract Results
+svm.B <- samp.price.algo(svm.test.mod, svm.predict.B)
+
+# predictions sample c
+svm.predict.C <-predict(svm_Linear_final, sampleC)
+
+#Extract Results
+svm.C <- samp.price.algo(svm.test.mod, svm.predict.C)
+
+```
+
+
+```{r Samples Random Forest}
+# predictions sample A
+rf.predict.A <-predict(rf_final, sampleA)
+
+#Extract Results
+rf.A <- samp.price.algo(rf.test.mod, rf.predict.A)
+
+# predictions sample B
+rf.predict.B <-predict(rf_final, sampleB)
+
+#Extract Results
+rf.B <- samp.price.algo(rf.test.mod, rf.predict.B)
+
+# predictions sample c
+rf.predict.C <-predict(rf_final, sampleC)
+
+#Extract Results
+rf.C <- samp.price.algo(rf.test.mod, rf.predict.C)
+
+```
+
+# Sample A Predictions
+
+```{r sampA}
+
+mods <- c('NNET', 'LDA', 'KNN', 'SVM', 'RF')
+
+pred_price_A <- c(round(nnet.A$`Calculated Price`, digits = 4), round(lda.A$`Calculated Price`, digits = 4), round(knn.A$`Calculated Price`, digits =4), round(svm.A$`Calculated Price`, digits = 4), round(rf.A$`Calculated Price`, digits = 4))
+
+pred_weight_A <- c(round(nnet.A$`Pred Weight`, digits = 4), round(lda.A$`Pred Weight`, digits = 4), round(knn.A$`Pred Weight`, digits =4), round(svm.A$`Pred Weight`, digits = 4), round(rf.A$`Pred Weight`, digits = 4))
+
+error_A <- c(nnet.A$`Error in Dollars`, lda.A$`Error in Dollars`, knn.A$`Error in Dollars`, svm.A$`Error in Dollars`, rf.A$`Error in Dollars`)
+
+acc_A <- c(round(nnet.A$`Price Accuracy Prediction`, digits = 4), round(lda.A$`Price Accuracy Prediction`, digits =4), round(knn.A$`Price Accuracy Prediction`, digits = 4), round(svm.A$`Price Accuracy Prediction`, digits = 4), round(rf.A$`Price Accuracy Prediction`, digits =4))
+
+comb2 <- data.frame(rbind(
+                           "Predicted Price"=pred_price_A,
+                           "Predicted Weight"=pred_weight_A,
+                           "Price Accuracy Prediction"=acc_A,
+                           "Error in Dollars"=error_A))
+names(comb2) <-c('NNET', 'LDA', 'KNN', 'SVM', 'RF')
+kable_samp_A <- kable(comb2, caption = "Prediction for Sample A")
+
+
+kable_samp_A
+
+# "BOMBAY + CALI + DERMASON + HOROZ + SEKER + SIRA
+bomb_A <- c(nnet.A$`Bean Counts`[[1]], lda.A$`Bean Counts`[[1]], knn.A$`Bean Counts`[[1]], svm.A$`Bean Counts`[[1]], rf.A$`Bean Counts`[[1]])
+cali_A <- c(nnet.A$`Bean Counts`[[2]], lda.A$`Bean Counts`[[2]], knn.A$`Bean Counts`[[2]], svm.A$`Bean Counts`[[2]], rf.A$`Bean Counts`[[2]])
+derm_A <- c(nnet.A$`Bean Counts`[[3]], lda.A$`Bean Counts`[[3]], knn.A$`Bean Counts`[[3]], svm.A$`Bean Counts`[[3]], rf.A$`Bean Counts`[[3]])
+horoz_A <- c(nnet.A$`Bean Counts`[[4]], lda.A$`Bean Counts`[[4]], knn.A$`Bean Counts`[[4]], svm.A$`Bean Counts`[[4]], rf.A$`Bean Counts`[[4]])
+seker_A <- c(nnet.A$`Bean Counts`[[5]], lda.A$`Bean Counts`[[5]], knn.A$`Bean Counts`[[5]], svm.A$`Bean Counts`[[5]], rf.A$`Bean Counts`[[5]])
+sira_A <- c(nnet.A$`Bean Counts`[[6]], lda.A$`Bean Counts`[[6]], knn.A$`Bean Counts`[[6]], svm.A$`Bean Counts`[[6]], rf.A$`Bean Counts`[[6]])
+
+bc_tab_A <- data.frame(Model=mods,
+                       "Bombay"=bomb_A, "Cali"=cali_A, "Dermason"=derm_A, "Horoz"=horoz_A, "Seker"=seker_A, "Sira"=sira_A)
+
+bc_kab_A <- kable(bc_tab_A, caption="Predicted Bean Counts Sample A")
+
+bc_kab_A
+```
+
+# Sample B Predictions
+
+```{r samp B}
+
+pred_price_B <- c(round(nnet.B$`Calculated Price`, digits = 4), round(lda.B$`Calculated Price`, digits = 4), round(knn.B$`Calculated Price`,digits =4), round(svm.B$`Calculated Price`, digits = 4), round(rf.B$`Calculated Price`, digits = 4))
+
+pred_weight_B <- c(round(nnet.B$`Pred Weight`, digits = 4), round(lda.B$`Pred Weight`, digits = 4), round(knn.B$`Pred Weight`, digits =4), round(svm.B$`Pred Weight`, digits = 4), round(rf.B$`Pred Weight`, digits = 4))
+
+error_B <- c(nnet.B$`Error in Dollars`, lda.B$`Error in Dollars`, knn.B$`Error in Dollars`, svm.B$`Error in Dollars`, rf.B$`Error in Dollars`)
+
+acc_B <- c(round(nnet.B$`Price Accuracy Prediction`, digits = 4), round(lda.B$`Price Accuracy Prediction`, digits = 4), round(knn.B$`Price Accuracy Prediction`, digits = 4), round(svm.B$`Price Accuracy Prediction`, digits = 4), round(rf.B$`Price Accuracy Prediction`, digits = 4))
+
+comb3 <- data.frame(rbind(
+                           "Predicted Price"=pred_price_B,
+                          "Predicted Weight"=pred_weight_B,
+                           "Price Accuracy Prediction"=acc_B,
+                           "Error in Dollars"=error_B))
+
+names(comb3) <-c('NNET', 'LDA', 'KNN', 'SVM', 'RF')
+kable_samp_B <- kable(comb3, caption = "Prediction for Sample B")
+
+
+kable_samp_B
+
+bomb_B <- c(nnet.B$`Bean Counts`[[1]], lda.B$`Bean Counts`[[1]], knn.B$`Bean Counts`[[1]], svm.B$`Bean Counts`[[1]], rf.B$`Bean Counts`[[1]])
+cali_B <- c(nnet.B$`Bean Counts`[[2]], lda.B$`Bean Counts`[[2]], knn.B$`Bean Counts`[[2]], svm.B$`Bean Counts`[[2]], rf.B$`Bean Counts`[[2]])
+derm_B <- c(nnet.B$`Bean Counts`[[3]], lda.B$`Bean Counts`[[3]], knn.B$`Bean Counts`[[3]], svm.B$`Bean Counts`[[3]], rf.B$`Bean Counts`[[3]])
+horoz_B <- c(nnet.B$`Bean Counts`[[4]], lda.B$`Bean Counts`[[4]], knn.B$`Bean Counts`[[4]], svm.B$`Bean Counts`[[4]], rf.B$`Bean Counts`[[4]])
+seker_B <- c(nnet.B$`Bean Counts`[[5]], lda.B$`Bean Counts`[[5]], knn.B$`Bean Counts`[[5]], svm.B$`Bean Counts`[[5]], rf.B$`Bean Counts`[[5]])
+sira_B <- c(nnet.B$`Bean Counts`[[6]], lda.B$`Bean Counts`[[6]], knn.B$`Bean Counts`[[6]], svm.B$`Bean Counts`[[6]], rf.B$`Bean Counts`[[6]])
+
+bc_tab_B <- data.frame(Model=mods,
+                       "Bombay"=bomb_B, "Cali"=cali_B, "Dermason"=derm_B, "Horoz"=horoz_B, "Seker"=seker_B, "Sira"=sira_B)
+
+bc_kab_B <- kable(bc_tab_B, caption="Predicted Bean Counts Sample B")
+
+bc_kab_B
+```
+
+# Sample C Predictions
+
+```{r samp c}
+
+pred_price_C <- c(round(nnet.C$`Calculated Price`, digits = 4), round(lda.C$`Calculated Price`, digits = 4), round(knn.C$`Calculated Price`, digits = 4), round(svm.C$`Calculated Price`, digits = 4), round(rf.C$`Calculated Price`, digits = 4))
+
+pred_weight_C <- c(round(nnet.C$`Pred Weight`, digits = 4), round(lda.C$`Pred Weight`, digits = 4), round(knn.C$`Pred Weight`, digits =4), round(svm.C$`Pred Weight`, digits = 4), round(rf.C$`Pred Weight`, digits = 4))
+
+error_C <- c(nnet.C$`Error in Dollars`, lda.C$`Error in Dollars`, knn.C$`Error in Dollars`, svm.C$`Error in Dollars`, rf.C$`Error in Dollars`)
+
+acc_C <- c(round(nnet.C$`Price Accuracy Prediction`, digits = 4), round(lda.C$`Price Accuracy Prediction`, digits = 4), round(knn.C$`Price Accuracy Prediction`, digits = 4), round(svm.C$`Price Accuracy Prediction`, digits =4), round(rf.C$`Price Accuracy Prediction`, digits = 4))
+
+comb4 <- data.frame(rbind(
+                          "Predicted Price"=pred_price_C,
+                          "Predicted Weight"=pred_weight_C,
+                           "Price Accuracy Prediction"=acc_C,
+                           "Error in Dollars"=error_C))
+names(comb4) <-c('NNET', 'LDA', 'KNN', 'SVM', 'RF')
+kable_samp_C <- kable(comb4, caption = "Prediction for Sample C")
+
+
+kable_samp_C
+
+bomb_C <- c(nnet.C$`Bean Counts`[[1]], lda.C$`Bean Counts`[[1]], knn.C$`Bean Counts`[[1]], svm.C$`Bean Counts`[[1]], rf.C$`Bean Counts`[[1]])
+cali_C <- c(nnet.C$`Bean Counts`[[2]], lda.C$`Bean Counts`[[2]], knn.C$`Bean Counts`[[2]], svm.C$`Bean Counts`[[2]], rf.C$`Bean Counts`[[2]])
+derm_C <- c(nnet.C$`Bean Counts`[[3]], lda.C$`Bean Counts`[[3]], knn.C$`Bean Counts`[[3]], svm.C$`Bean Counts`[[3]], rf.C$`Bean Counts`[[3]])
+horoz_C <- c(nnet.C$`Bean Counts`[[4]], lda.C$`Bean Counts`[[4]], knn.C$`Bean Counts`[[4]], svm.C$`Bean Counts`[[4]], rf.C$`Bean Counts`[[4]])
+seker_C <- c(nnet.C$`Bean Counts`[[5]], lda.C$`Bean Counts`[[5]], knn.C$`Bean Counts`[[5]], svm.C$`Bean Counts`[[5]], rf.C$`Bean Counts`[[5]])
+sira_C <- c(nnet.C$`Bean Counts`[[6]], lda.C$`Bean Counts`[[6]], knn.C$`Bean Counts`[[6]], svm.C$`Bean Counts`[[6]], rf.C$`Bean Counts`[[6]])
+
+bc_tab_C <- data.frame(Model=mods,
+                       "Bombay"=bomb_C, "Cali"=cali_C, "Dermason"=derm_C, "Horoz"=horoz_C, "Seker"=seker_C, "Sira"=sira_C)
+
+bc_kab_C <- kable(bc_tab_C, caption="Predicted Bean Counts Sample C")
+
+bc_kab_C
+
+```
+\newpage
+
+# Sources: 
+
+1. https://www.rdocumentation.org/packages/neuralnet/versions/1.44.2/topics/neuralnet
+
+2. https://www.edureka.co/blog/knn-algorithm-in-r/
+
+3. https://rstudio-pubs-static.s3.amazonaws.com/316172_a857ca788d1441f8be1bcd1e31f0e875.html
+
+4. https://www.edureka.co/blog/random-forest-classifier/ 
+
+5. https://www.blopig.com/blog/2017/04/a-very-basic-introduction-to-random-forests-using-r/ 
+
+6. https://github.com/mariocastro73/ML2020-2021/blob/master/scripts/caret-rf.R
+
+7. KOKLU, M. and OZKAN, I.A., (2020), “Multiclass Classification of Dry Beans Using Computer Vision and Machine Learning Techniques.” Computers and Electronics in Agriculture, 174, 105507.
+
+8. Saunders, Christopher.(2018).Final LDA Example. https://d2l.sdbor.edu/d2l/le/content/1543761/viewContent/8840088/View
+ 
+9. https://www.edureka.co/blog/support-vector-machine-in-r/
+
+10. https://www.r-project.org/conferences/useR-2013/Tutorials/kuhn/user_caret_2up.pdf
+
+11. Gareth James, Daniela Witten, Trevor Hastie, Robert Tibshirani. (2013). An introduction to statistical learning : with applications in R. New York :Springer
